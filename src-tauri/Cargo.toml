@@ -1,0 +1,38 @@
+[package]
+name = "linux-clipboard"
+version = "0.1.0"
+description = "Windows-10 style clipboard history manager for Linux"
+authors = ["datluong"]
+edition = "2021"
+
+[lib]
+# The `_lib` suffix keeps the lib name distinct from the bin name (a Windows
+# linker quirk); harmless elsewhere.
+name = "linux_clipboard_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Tauri plugins we keep (desktop integration that has no good native crate).
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+
+# Native building blocks (backend owns clipboard, storage, paste, hashing).
+arboard = "3"                                      # clipboard read/write (X11 + Wayland)
+enigo = "0.2"                                      # synthetic Ctrl+V (X11 needs libxdo)
+rusqlite = { version = "0.32", features = ["bundled"] }  # history DB (SQLite compiled in)
+image = "0.25"                                     # decode/encode PNG + thumbnails
+sha2 = "0.10"                                      # content hashing for dedup/suppress
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

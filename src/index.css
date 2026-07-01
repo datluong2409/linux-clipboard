@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/*
+  Windows-10-style clipboard theme.
+  The panel window is frameless + transparent; the app paints its own rounded
+  surface so it looks correct whether or not the compositor honors transparency.
+*/
+@theme {
+  --color-panel: #f5f6f8;
+  --color-panel-dark: #2b2b2b;
+  --color-card: #ffffff;
+  --color-card-dark: #383838;
+  --color-accent: #0067c0;
+  --color-accent-soft: #cfe4fa;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: transparent;
+  font-family:
+    "Segoe UI", system-ui, -apple-system, "Ubuntu", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Thin, unobtrusive scrollbar like the Win10 flyout */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 120, 120, 0.5) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(120, 120, 120, 0.45);
+  border-radius: 4px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Text that may contain long unbreakable strings (urls, tokens) */
+.clip-preview {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
