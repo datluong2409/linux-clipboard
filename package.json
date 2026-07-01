@@ -9,7 +9,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "npx tauri",
-    "build:app": "npx tauri build"
+    "build:app": "fakeroot npx tauri build"
   },
   "dependencies": {
     "react": "^19.1.0",
