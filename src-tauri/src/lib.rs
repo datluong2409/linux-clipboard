@@ -74,9 +74,9 @@ pub fn run() {
             let _ = tray::build(&handle);
             clipboard::start_monitor(handle.clone());
 
-            if session.can_global_shortcut {
-                let _ = hotkey::register(&handle, &settings_val.hotkey);
-            }
+            // Install the panel hotkey using the session's detected backend
+            // (GNOME custom keybinding, or the in-app global-shortcut plugin).
+            commands::init_hotkey(&handle);
 
             Ok(())
         })
@@ -94,8 +94,6 @@ pub fn run() {
             commands::set_settings,
             commands::set_hotkey,
             commands::get_session_info,
-            commands::configure_gnome_shortcut,
-            commands::remove_gnome_shortcut,
             commands::set_autostart,
         ])
         .run(tauri::generate_context!())

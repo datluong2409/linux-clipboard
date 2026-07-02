@@ -3,7 +3,7 @@
 use crate::models::{Clip, OpResult, SessionInfo, Settings};
 use crate::state::AppState;
 use crate::{autostart, clipboard, db, gnome, hotkey, images, settings, window};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 #[tauri::command]
 pub fn get_history(state: State<'_, AppState>, limit: Option<i64>) -> Vec<Clip> {
@@ -132,8 +132,8 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, settings: Settin
     }
     let _ = crate::settings::save(&st.config_path, &settings);
 
-    if settings.hotkey != old.hotkey && st.session.can_global_shortcut {
-        let _ = hotkey::rebind(&app, &settings.hotkey);
+    if settings.hotkey != old.hotkey {
+        let _ = apply_hotkey(&app, &st.session.hotkey_backend, &settings.hotkey);
     }
     if settings.autostart != old.autostart {
         let _ = autostart::set(&app, settings.autostart);
@@ -145,23 +145,29 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, settings: Settin
 #[tauri::command]
 pub fn set_hotkey(app: AppHandle, state: State<'_, AppState>, accel: String) -> OpResult {
     let st = state.inner();
-    if !st.session.can_global_shortcut {
-        // Wayland: can't register globally — remember the intent, steer to GNOME.
-        if let Ok(mut g) = st.settings.write() {
-            g.hotkey = accel.clone();
-        }
-        let _ = settings::save(&st.config_path, &st.settings());
-        return OpResult::err("wayland_use_gnome");
-    }
-    match hotkey::rebind(&app, &accel) {
+    let backend = st.session.hotkey_backend.clone();
+    match apply_hotkey(&app, &backend, &accel) {
         Ok(()) => {
             if let Ok(mut g) = st.settings.write() {
                 g.hotkey = accel.clone();
+                if backend == "gnome" {
+                    g.gnome_shortcut_configured = true;
+                }
             }
             let _ = settings::save(&st.config_path, &st.settings());
             OpResult::ok()
         }
-        Err(e) => OpResult::err(e),
+        Err(e) => {
+            // No automatic backend (e.g. non-GNOME Wayland): still remember the
+            // chosen combo so the UI shows it and the user can bind it manually.
+            if e == "no_hotkey_backend" {
+                if let Ok(mut g) = st.settings.write() {
+                    g.hotkey = accel.clone();
+                }
+                let _ = settings::save(&st.config_path, &st.settings());
+            }
+            OpResult::err(e)
+        }
     }
 }
 
@@ -170,41 +176,48 @@ pub fn get_session_info(state: State<'_, AppState>) -> SessionInfo {
     state.session.clone()
 }
 
-#[tauri::command]
-pub fn configure_gnome_shortcut(state: State<'_, AppState>, accel: String) -> OpResult {
-    let st = state.inner();
+/// The shell command a GNOME custom keybinding runs to toggle the panel.
+/// (`tauri-plugin-single-instance` forwards `--toggle` to the running app.)
+fn gnome_toggle_command() -> Result<String, String> {
     let exe = std::env::current_exe()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
     if exe.is_empty() {
-        return OpResult::err("no_exe");
+        return Err("no_exe".into());
     }
-    let command = format!("{exe} --toggle");
-    let gnome_accel = gnome::to_gnome_accel(&accel);
-    match gnome::configure(&command, &gnome_accel) {
-        Ok(()) => {
-            if let Ok(mut g) = st.settings.write() {
-                g.gnome_shortcut_configured = true;
-            }
-            let _ = settings::save(&st.config_path, &st.settings());
-            OpResult::ok()
+    Ok(format!("{exe} --toggle"))
+}
+
+/// Bind `accel` using whichever hotkey backend this session supports. Callers
+/// own persisting the accelerator into settings.
+fn apply_hotkey(app: &AppHandle, backend: &str, accel: &str) -> Result<(), String> {
+    match backend {
+        // GNOME (X11 or Wayland): (re)write our dedicated custom keybinding,
+        // overwriting any previous value — this is the "sync with GNOME" path.
+        "gnome" => {
+            let command = gnome_toggle_command()?;
+            gnome::configure(&command, &gnome::to_gnome_accel(accel))
         }
-        Err(e) => OpResult::err(e),
+        // Non-GNOME X11: register/rebind the in-app global shortcut plugin.
+        "global-shortcut" => hotkey::rebind(app, accel),
+        _ => Err("no_hotkey_backend".into()),
     }
 }
 
-#[tauri::command]
-pub fn remove_gnome_shortcut(state: State<'_, AppState>) -> OpResult {
-    let st = state.inner();
-    match gnome::remove() {
-        Ok(()) => {
-            if let Ok(mut g) = st.settings.write() {
-                g.gnome_shortcut_configured = false;
-            }
-            let _ = settings::save(&st.config_path, &st.settings());
-            OpResult::ok()
+/// Install the panel hotkey at startup per the detected backend: (re)sync the
+/// GNOME custom keybinding, or register the in-app global shortcut. No-op when
+/// there is no automatic backend for this session.
+pub fn init_hotkey(app: &AppHandle) {
+    let Some(st) = app.try_state::<AppState>() else {
+        return;
+    };
+    let backend = st.session.hotkey_backend.clone();
+    let accel = st.settings().hotkey;
+    if apply_hotkey(app, &backend, &accel).is_ok() && backend == "gnome" {
+        if let Ok(mut g) = st.settings.write() {
+            g.gnome_shortcut_configured = true;
         }
-        Err(e) => OpResult::err(e),
+        let _ = settings::save(&st.config_path, &st.settings());
     }
 }
 

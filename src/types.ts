@@ -32,6 +32,8 @@ export interface SessionInfo {
   kind: "x11" | "wayland" | "unknown";
   isGnome: boolean;
   canGlobalShortcut: boolean;
+  /** Which mechanism the panel hotkey uses in this session. */
+  hotkeyBackend: "gnome" | "global-shortcut" | "none";
   canAutoPaste: boolean;
   autoPasteBackend: "enigo" | "ydotool" | "none";
 }

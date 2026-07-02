@@ -1,6 +1,9 @@
-//! Program (or remove) a GNOME custom keyboard shortcut via `gsettings`, so a
-//! user-chosen key combo launches `<app> --toggle` — the Wayland-friendly path
-//! to trigger the panel (single-instance forwards `--toggle` to the running app).
+//! Program a GNOME custom keyboard shortcut via `gsettings`, so a user-chosen
+//! key combo launches `<app> --toggle` — the trigger path used on GNOME (X11 or
+//! Wayland; single-instance forwards `--toggle` to the running app).
+//!
+//! `configure` is idempotent: it owns one dedicated keybinding slot and
+//! overwrites its command/binding on every call, so it doubles as "sync".
 
 use std::process::Command;
 
@@ -18,17 +21,6 @@ pub fn configure(command: &str, gnome_accel: &str) -> Result<(), String> {
     gsettings_set(&[&path_schema, "name", "Linux Clipboard Toggle"])?;
     gsettings_set(&[&path_schema, "command", command])?;
     gsettings_set(&[&path_schema, "binding", gnome_accel])?;
-    Ok(())
-}
-
-pub fn remove() -> Result<(), String> {
-    let current = gsettings_get(&[SCHEMA, "custom-keybindings"]).unwrap_or_default();
-    let list = remove_slot(&current);
-    gsettings_set(&[SCHEMA, "custom-keybindings", &list])?;
-    let path_schema = format!("{KB_SCHEMA}:{SLOT}");
-    let _ = Command::new("gsettings")
-        .args(["reset-recursively", &path_schema])
-        .status();
     Ok(())
 }
 
@@ -81,14 +73,6 @@ fn ensure_slot(current: &str) -> String {
     if !items.iter().any(|s| s == SLOT) {
         items.push(SLOT.to_string());
     }
-    build_list(&items)
-}
-
-fn remove_slot(current: &str) -> String {
-    let items: Vec<String> = parse_list(current)
-        .into_iter()
-        .filter(|s| s != SLOT)
-        .collect();
     build_list(&items)
 }
 

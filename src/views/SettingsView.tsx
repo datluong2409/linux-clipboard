@@ -5,12 +5,7 @@ import {
   isValidAccelerator,
   prettyAccelerator,
 } from "../lib/accelerator";
-import {
-  clearHistory,
-  configureGnomeShortcut,
-  removeGnomeShortcut,
-  setHotkey,
-} from "../lib/ipc";
+import { clearHistory, setHotkey } from "../lib/ipc";
 import type { SessionInfo, Settings } from "../types";
 
 interface Props {
@@ -84,9 +79,9 @@ export function SettingsView({
       if (r.ok) {
         if (settings) onLocal({ ...settings, hotkey: accel });
         onToast("Đã đổi phím tắt");
-      } else if (r.reason === "wayland_use_gnome") {
+      } else if (r.reason === "no_hotkey_backend") {
         if (settings) onLocal({ ...settings, hotkey: accel });
-        onToast("Wayland: dùng nút 'Cấu hình GNOME shortcut' bên dưới");
+        onToast("Đã lưu phím tắt — môi trường này cần tạo shortcut thủ công");
       } else {
         onToast(
           r.reason === "invalid"
@@ -142,7 +137,7 @@ export function SettingsView({
     );
   }
 
-  const isWayland = sessionInfo?.kind === "wayland";
+  const hotkeyBackend = sessionInfo?.hotkeyBackend;
 
   return (
     <div className="flex h-full flex-col">
@@ -181,10 +176,21 @@ export function SettingsView({
               ? "Nhấn tổ hợp phím… (Esc để huỷ)"
               : prettyAccelerator(settings.hotkey)}
           </button>
-          {isWayland && (
+          {hotkeyBackend === "gnome" && (
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              Tự động đồng bộ với shortcut hệ thống GNOME (áp dụng ngay, kể cả
+              trên Wayland).
+            </p>
+          )}
+          {hotkeyBackend === "none" && (
             <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-              Trên Wayland, phím tắt trong app không hoạt động — hãy dùng GNOME
-              shortcut bên dưới.
+              Môi trường này (Wayland ngoài GNOME) không cho app tự đăng ký phím
+              tắt. Phím tắt vẫn được lưu — hãy tạo shortcut trong cài đặt bàn
+              phím của desktop, chạy lệnh{" "}
+              <code className="rounded bg-black/10 px-1 dark:bg-white/10">
+                linux-clipboard --toggle
+              </code>
+              .
             </p>
           )}
         </section>
@@ -237,49 +243,6 @@ export function SettingsView({
           </label>
         </section>
 
-        {/* GNOME shortcut helper */}
-        <section className="mb-4">
-          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            GNOME shortcut {isWayland ? "(khuyên dùng)" : "(tuỳ chọn)"}
-          </h2>
-          <p className="mb-2 text-xs text-neutral-500 dark:text-neutral-400">
-            Tạo custom shortcut trong GNOME chạy lệnh mở bảng — hoạt động cả trên
-            Wayland.
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={async () => {
-                const r = await configureGnomeShortcut(settings.hotkey);
-                if (r.ok) {
-                  onLocal({ ...settings, gnomeShortcutConfigured: true });
-                  onToast("Đã tạo GNOME shortcut");
-                } else {
-                  onToast("Không tạo được — thử Settings → Keyboard thủ công");
-                }
-              }}
-              className="flex-1 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-white hover:opacity-90"
-            >
-              Cấu hình GNOME shortcut
-            </button>
-            {settings.gnomeShortcutConfigured && (
-              <button
-                type="button"
-                onClick={async () => {
-                  const r = await removeGnomeShortcut();
-                  if (r.ok) {
-                    onLocal({ ...settings, gnomeShortcutConfigured: false });
-                    onToast("Đã gỡ GNOME shortcut");
-                  }
-                }}
-                className="rounded-md border border-black/10 px-3 py-2 text-sm hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
-              >
-                Gỡ
-              </button>
-            )}
-          </div>
-        </section>
-
         {/* Danger zone */}
         <section className="mb-4">
           <button
@@ -299,6 +262,10 @@ export function SettingsView({
           <div className="flex justify-between">
             <span>Phiên hiển thị</span>
             <span className="font-mono uppercase">{sessionInfo?.kind ?? "?"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cơ chế phím tắt</span>
+            <span className="font-mono">{sessionInfo?.hotkeyBackend ?? "?"}</span>
           </div>
           <div className="flex justify-between">
             <span>Auto-paste backend</span>

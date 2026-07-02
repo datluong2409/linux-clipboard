@@ -67,6 +67,11 @@ pub struct SessionInfo {
     pub kind: String, // "x11" | "wayland" | "unknown"
     pub is_gnome: bool,
     pub can_global_shortcut: bool,
+    /// Which mechanism triggers the panel hotkey in this session:
+    /// "gnome" (GNOME custom keybinding via gsettings, X11 or Wayland) |
+    /// "global-shortcut" (in-app plugin, non-GNOME X11) |
+    /// "none" (no automatic trigger, e.g. non-GNOME Wayland).
+    pub hotkey_backend: String,
     pub can_auto_paste: bool,
     pub auto_paste_backend: String, // "enigo" | "ydotool" | "none"
 }

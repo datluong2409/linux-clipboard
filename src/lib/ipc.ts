@@ -37,12 +37,6 @@ export const setHotkey = (accel: string) =>
 
 export const getSessionInfo = () => invoke<SessionInfo>("get_session_info");
 
-export const configureGnomeShortcut = (accel: string) =>
-  invoke<OpResult>("configure_gnome_shortcut", { accel });
-
-export const removeGnomeShortcut = () =>
-  invoke<OpResult>("remove_gnome_shortcut");
-
 export const setAutostart = (enabled: boolean) =>
   invoke<OpResult>("set_autostart", { enabled });
 
