@@ -2,8 +2,10 @@
 //! the menu (not click events) is the reliable interaction on Linux.
 //!
 //! The menu is rebuilt from `AppState` (via [`build_menu`]) so it can reflect
-//! live status — notably the Wayland auto-paste permission, which the user
-//! grants once through the RemoteDesktop portal consent dialog.
+//! live status. The "Auto-paste" item is a toggle bound to
+//! `Settings.auto_paste`; on Wayland, turning it on also runs the one-time
+//! RemoteDesktop portal consent flow. Turning it off just stops pasting — the
+//! OS grant stays cached so re-enabling is silent.
 
 use crate::state::AppState;
 use crate::window;
@@ -25,7 +27,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                 let _ = app.emit("open-settings", ());
                 window::show_panel(app);
             }
-            "enable_paste" => on_enable_paste(app),
+            "toggle_paste" => on_toggle_paste(app),
             "quit" => app.exit(0),
             _ => {}
         });
@@ -38,8 +40,8 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Rebuild the tray menu to reflect current state (e.g. after auto-paste is
-/// enabled). Must run on the main thread.
+/// Rebuild the tray menu to reflect current state (auto-paste on/off, portal
+/// grant). Must run on the main thread.
 pub fn refresh(app: &AppHandle) {
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         if let Ok(menu) = build_menu(app) {
@@ -55,31 +57,92 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
 
     let mut builder = MenuBuilder::new(app).items(&[&show, &settings]);
 
-    // On Wayland the auto-paste backend is the RemoteDesktop portal, which needs
-    // a one-time consent. Surface its status + an enable action right here so
-    // the user can grant it when convenient instead of mid-paste.
+    // Auto-paste on/off toggle (only shown where auto-paste is possible at all).
     let state = app.state::<AppState>();
-    if state.session.auto_paste_backend == "portal" {
-        let label = if crate::portal::is_granted(&state.paste_backend) {
-            "Auto-paste: Đã bật ✓"
-        } else {
-            "Bật auto-paste (cấp quyền)…"
+    if state.session.can_auto_paste {
+        let label = match paste_state(&state) {
+            PasteState::NeedsPermission => "Auto-paste: cần cấp quyền ⚠",
+            PasteState::On => "Auto-paste: Bật ✓",
+            PasteState::Off => "Auto-paste: Tắt",
         };
-        let enable = MenuItemBuilder::with_id("enable_paste", label).build(app)?;
-        builder = builder.item(&enable);
+        let toggle = MenuItemBuilder::with_id("toggle_paste", label).build(app)?;
+        builder = builder.item(&toggle);
     }
 
     builder.item(&quit).build()
 }
 
+enum PasteState {
+    /// Setting on and usable (granted, or X11 where no grant is needed).
+    On,
+    /// Setting off.
+    Off,
+    /// Setting on but the Wayland portal permission hasn't been granted yet.
+    NeedsPermission,
+}
+
+fn paste_state(state: &AppState) -> PasteState {
+    if !state.settings().auto_paste {
+        return PasteState::Off;
+    }
+    let needs_portal = state.session.auto_paste_backend == "portal";
+    if needs_portal && !crate::portal::is_granted(&state.paste_backend) {
+        PasteState::NeedsPermission
+    } else {
+        PasteState::On
+    }
+}
+
+/// Handle a click on the auto-paste toggle, acting on the current state:
+/// - `NeedsPermission` → run the consent flow, keep the setting on.
+/// - `On` → turn the setting off (keeps the OS grant for later).
+/// - `Off` → turn the setting on (+ grant now on Wayland).
+fn on_toggle_paste(app: &AppHandle) {
+    match paste_state(&app.state::<AppState>()) {
+        PasteState::NeedsPermission => grant_async(app),
+        PasteState::On => {
+            persist_auto_paste(app, false);
+            refresh(app);
+        }
+        PasteState::Off => {
+            persist_auto_paste(app, true);
+            // First enable on Wayland: grant now (shows the dialog) instead of
+            // waiting for the first paste. grant_async refreshes when done.
+            let state = app.state::<AppState>();
+            let needs_grant = state.session.auto_paste_backend == "portal"
+                && !crate::portal::is_granted(&state.paste_backend);
+            if needs_grant {
+                grant_async(app);
+            } else {
+                refresh(app);
+            }
+        }
+    }
+}
+
+/// Write `Settings.auto_paste`, persist to disk, and notify the frontend —
+/// mirroring `commands::set_settings` for this one field.
+fn persist_auto_paste(app: &AppHandle, value: bool) {
+    let state = app.state::<AppState>();
+    let new_settings = {
+        let Ok(mut g) = state.settings.write() else {
+            return;
+        };
+        g.auto_paste = value;
+        g.clone()
+    };
+    let _ = crate::settings::save(&state.config_path, &new_settings);
+    let _ = app.emit("settings-updated", &new_settings);
+}
+
 /// Run the portal consent flow off the main thread (it blocks while the dialog
-/// is up), then rebuild the menu on the main thread to update the status label.
-fn on_enable_paste(app: &AppHandle) {
+/// is up), then refresh the menu on the main thread.
+fn grant_async(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let cell = app.state::<AppState>().paste_backend.clone();
         if !crate::portal::enable(&cell) {
-            eprintln!("[tray] enabling auto-paste failed or was denied");
+            eprintln!("[tray] auto-paste enabled but portal consent was denied/failed");
         }
         let app_ui = app.clone();
         let _ = app.run_on_main_thread(move || refresh(&app_ui));

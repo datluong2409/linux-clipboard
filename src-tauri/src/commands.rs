@@ -139,6 +139,11 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, settings: Settin
     if settings.autostart != old.autostart {
         let _ = autostart::set(&app, settings.autostart);
     }
+    if settings.auto_paste != old.auto_paste {
+        // Keep the tray's auto-paste toggle label in sync with the Settings UI.
+        let app2 = app.clone();
+        let _ = app.run_on_main_thread(move || crate::tray::refresh(&app2));
+    }
     let _ = app.emit("settings-updated", &settings);
     OpResult::ok()
 }
