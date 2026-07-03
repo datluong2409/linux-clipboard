@@ -20,11 +20,12 @@ export function ClipboardItem({
   return (
     <div
       onClick={onPaste}
+      data-selected={selected || undefined}
       className={[
         "group relative flex h-24 cursor-pointer items-center overflow-hidden rounded-lg border p-3 transition",
         selected
           ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)]/50 ring-1 ring-[var(--color-accent)]"
-          : "border-black/5 bg-white hover:border-black/10 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/10",
+          : "border-black/5 bg-white hover:border-neutral-400 dark:border-white/5 dark:bg-white/5 dark:hover:border-neutral-500 dark:hover:bg-white/10",
       ].join(" ")}
     >
       {clip.kind === "image" && clip.thumbPath ? (

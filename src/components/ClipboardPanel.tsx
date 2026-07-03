@@ -24,10 +24,17 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
   const { items, reload } = useHistory(query, refreshKey);
   const [sel, setSel] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSel(0);
   }, [query, items.length]);
+
+  // Keep the keyboard-selected item scrolled into view.
+  useEffect(() => {
+    const el = listRef.current?.querySelector<HTMLElement>("[data-selected]");
+    el?.scrollIntoView({ block: "nearest" });
+  }, [sel]);
 
   // Focus search each time the panel is (re)shown.
   useEffect(() => {
@@ -127,7 +134,7 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
         </button>
       </div>
 
-      <div className="scroll-thin flex-1 overflow-y-auto p-4">
+      <div ref={listRef} className="scroll-thin flex-1 overflow-y-auto p-4">
         {items.length === 0 ? (
           <EmptyState query={query} />
         ) : (
