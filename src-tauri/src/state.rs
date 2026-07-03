@@ -31,6 +31,10 @@ pub struct AppState {
     /// Lazily-built Wayland paste backend (XDG RemoteDesktop portal + libei).
     /// Built on the first auto-paste; reused afterwards. See `portal.rs`.
     pub paste_backend: crate::portal::PortalCell,
+
+    /// Set once we've shown the "enable auto-paste?" prompt this session, so the
+    /// user isn't nagged on every paste while the portal permission is ungranted.
+    pub paste_prompt_shown: AtomicBool,
 }
 
 impl AppState {

@@ -36,6 +36,7 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--hidden"]),
@@ -70,6 +71,7 @@ pub fn run() {
                 current_hotkey: Mutex::new(None),
                 monitor_paused: AtomicBool::new(false),
                 paste_backend: portal::new_cell(),
+                paste_prompt_shown: AtomicBool::new(false),
             });
 
             reconcile(&handle);

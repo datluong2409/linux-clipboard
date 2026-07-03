@@ -23,6 +23,7 @@ serde_json = "1"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-dialog = "2"                           # native confirm dialog (Wayland auto-paste prompt)
 
 # Native building blocks (backend owns clipboard, storage, paste, hashing).
 arboard = "3"                                      # clipboard read/write (X11 + Wayland)

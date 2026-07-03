@@ -4,6 +4,7 @@ use crate::models::{Clip, OpResult, SessionInfo, Settings};
 use crate::state::AppState;
 use crate::{autostart, clipboard, db, gnome, hotkey, images, settings, window};
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
 #[tauri::command]
 pub fn get_history(state: State<'_, AppState>, limit: Option<i64>) -> Vec<Clip> {
@@ -86,27 +87,84 @@ pub fn paste_item(app: AppHandle, state: State<'_, AppState>, id: i64) -> OpResu
     }
 
     let cfg = st.settings();
-    let do_paste = cfg.auto_paste && st.session.can_auto_paste;
 
     // 4. Hide our window first so focus returns to the target app.
     window::hide_panel(&app);
     let _ = app.emit("history-updated", ());
 
-    // 5. Auto-paste after a short focus-settle delay, or fall back to copy-only.
-    if do_paste {
-        let session = st.session.clone();
-        let portal = st.paste_backend.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(140));
-            crate::paste::paste(&session, &portal);
-        });
-        OpResult::ok()
-    } else {
-        OpResult {
+    // 5. Auto-paste, or fall back to copy-only.
+    if !(cfg.auto_paste && st.session.can_auto_paste) {
+        return OpResult {
             ok: true,
             reason: Some("copied".into()),
-        }
+        };
     }
+
+    // On Wayland the RemoteDesktop portal permission may not be granted yet.
+    // Rather than silently popping the OS consent mid-paste, ask the user once
+    // per session whether to enable it. The clip is already on the clipboard,
+    // so declining just means copy-only (manual Ctrl+V).
+    if st.session.auto_paste_backend == "portal" && !crate::portal::is_granted(&st.paste_backend) {
+        use std::sync::atomic::Ordering;
+        if st
+            .paste_prompt_shown
+            .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
+            .is_ok()
+        {
+            prompt_enable_paste(app.clone());
+        }
+        return OpResult {
+            ok: true,
+            reason: Some("copied".into()),
+        };
+    }
+
+    // Granted (or X11): auto-paste after a short focus-settle delay.
+    let session = st.session.clone();
+    let portal = st.paste_backend.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(140));
+        crate::paste::paste(&session, &portal);
+    });
+    OpResult::ok()
+}
+
+/// Ask (once per session) whether to grant the Wayland RemoteDesktop permission
+/// so auto-paste works. Runs off-thread because both the dialog and the consent
+/// flow block. The clip has already been copied by the caller, so declining is
+/// a safe copy-only fallback.
+fn prompt_enable_paste(app: AppHandle) {
+    std::thread::spawn(move || {
+        let enable = app
+            .dialog()
+            .message(
+                "Trên Wayland, để tự động dán vào ứng dụng bạn cần cấp quyền \
+                 Remote Desktop một lần.\n\nBật ngay? Nếu để sau, nội dung vẫn đã \
+                 được copy — bạn tự dán bằng Ctrl+V.",
+            )
+            .title("Bật auto-paste?")
+            .buttons(MessageDialogButtons::OkCancelCustom(
+                "Bật ngay".into(),
+                "Để sau".into(),
+            ))
+            .blocking_show();
+
+        if enable {
+            let cell = app.state::<AppState>().paste_backend.clone();
+            let _ = crate::portal::enable(&cell);
+            let app_ui = app.clone();
+            let _ = app.run_on_main_thread(move || crate::tray::refresh(&app_ui));
+        } else {
+            let _ = app
+                .dialog()
+                .message(
+                    "Nội dung đã được copy vào clipboard. Bạn có thể bật auto-paste \
+                     sau này trong Settings, hoặc ở menu khay hệ thống (tray).",
+                )
+                .title("Đã copy")
+                .blocking_show();
+        }
+    });
 }
 
 #[tauri::command]
