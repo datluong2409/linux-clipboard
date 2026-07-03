@@ -95,9 +95,10 @@ pub fn paste_item(app: AppHandle, state: State<'_, AppState>, id: i64) -> OpResu
     // 5. Auto-paste after a short focus-settle delay, or fall back to copy-only.
     if do_paste {
         let session = st.session.clone();
+        let portal = st.paste_backend.clone();
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_millis(140));
-            crate::paste::paste(&session);
+            crate::paste::paste(&session, &portal);
         });
         OpResult::ok()
     } else {

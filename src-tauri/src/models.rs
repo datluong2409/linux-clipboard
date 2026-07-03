@@ -73,7 +73,7 @@ pub struct SessionInfo {
     /// "none" (no automatic trigger, e.g. non-GNOME Wayland).
     pub hotkey_backend: String,
     pub can_auto_paste: bool,
-    pub auto_paste_backend: String, // "enigo" | "ydotool" | "none"
+    pub auto_paste_backend: String, // "enigo" (X11) | "portal" (Wayland libei) | "none"
 }
 
 /// Generic result for operations the frontend wants to react to (e.g. rebind).

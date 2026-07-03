@@ -35,7 +35,7 @@ export interface SessionInfo {
   /** Which mechanism the panel hotkey uses in this session. */
   hotkeyBackend: "gnome" | "global-shortcut" | "none";
   canAutoPaste: boolean;
-  autoPasteBackend: "enigo" | "ydotool" | "none";
+  autoPasteBackend: "enigo" | "portal" | "none";
 }
 
 export interface OpResult {

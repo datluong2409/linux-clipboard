@@ -36,8 +36,12 @@ sudo apt update && sudo apt install -y \
 - `libayatana-appindicator3-dev` — the system tray icon (needs the GNOME
   *AppIndicator* extension to actually show on GNOME)
 - `patchelf` — AppImage packaging
+- `libxkbcommon-dev` — Wayland auto-paste (keysym→keycode via the compositor keymap)
 
-Optional (Wayland auto-paste): install `ydotool` and run its `ydotoold` daemon.
+Wayland auto-paste needs no extra tool: it goes through the XDG **RemoteDesktop
+portal** (`xdg-desktop-portal-gnome` on GNOME, `xdg-desktop-portal-kde` on KDE —
+both ship by default). The first paste shows a one-time "Allow this app to
+control your computer?" consent dialog; it's silent thereafter.
 
 ## Develop / build
 
@@ -57,7 +61,8 @@ The **backend owns everything stateful**, which keeps behavior robust:
 - **Storage** — `rusqlite` (bundled SQLite) in the app data dir; images are
   stored as PNG files + a thumbnail, referenced by rows in the DB.
 - **Paste-back** — set clipboard → hide panel (focus returns to the target app)
-  → short delay → simulate Ctrl+V (`enigo` on X11, `ydotool` on Wayland).
+  → short delay → simulate Ctrl+V (`enigo` on X11; the XDG RemoteDesktop portal
+  + libei on Wayland — through the compositor, no `/dev/uinput`).
 - **Hotkey** — `tauri-plugin-global-shortcut` (X11). On Wayland it can't receive
   global hotkeys, so `tauri-plugin-single-instance` forwards `--toggle` from a
   GNOME custom shortcut to the running instance instead.
@@ -70,9 +75,9 @@ The **backend owns everything stateful**, which keeps behavior robust:
 
 ## Notes / limitations
 
-- **Wayland**: in-app global hotkeys, cursor-relative positioning, and reliable
-  auto-paste don't work; use the GNOME-shortcut helper and (optionally) ydotool.
-  The current dev machine is X11, where all features work.
+- **Wayland**: in-app global hotkeys and cursor-relative positioning don't work;
+  use the GNOME-shortcut helper (panel opens centered). Auto-paste works via the
+  RemoteDesktop portal (libei) after the one-time consent prompt.
 - **GNOME tray**: the tray icon requires the AppIndicator/KStatusNotifier
   extension. The hotkey remains the primary way to open the panel.
 - Terminals that use `Ctrl+Shift+V` won't receive the simulated `Ctrl+V`; the

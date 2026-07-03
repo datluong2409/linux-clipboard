@@ -1,18 +1,20 @@
 //! Synthetic Ctrl+V (auto-paste) and cursor location, via enigo (X11) or the
-//! external ydotool daemon (Wayland). Never errors hard: returns false when no
-//! backend is available so callers can fall back to copy-only.
+//! XDG RemoteDesktop portal + libei (Wayland, see `portal.rs`). Never errors
+//! hard: returns false when no backend is available so callers can fall back
+//! to copy-only.
 
 use crate::models::SessionInfo;
+use crate::portal::PortalCell;
 use enigo::{Direction, Enigo, Key, Keyboard, Mouse, Settings as EnigoSettings};
-use std::process::Command;
 use std::time::Duration;
 
 /// Simulate Ctrl+V with the best available backend. Returns true if a
-/// keystroke was actually dispatched.
-pub fn paste(session: &SessionInfo) -> bool {
+/// keystroke was actually dispatched. `portal` is the lazily-built Wayland
+/// paste session (ignored on X11).
+pub fn paste(session: &SessionInfo, portal: &PortalCell) -> bool {
     match session.auto_paste_backend.as_str() {
         "enigo" => paste_enigo(),
-        "ydotool" => paste_ydotool(),
+        "portal" => crate::portal::paste_ctrl_v(portal),
         _ => false,
     }
 }
@@ -27,15 +29,6 @@ fn paste_enigo() -> bool {
     std::thread::sleep(Duration::from_millis(20));
     ok &= enigo.key(Key::Control, Direction::Release).is_ok();
     ok
-}
-
-fn paste_ydotool() -> bool {
-    // Linux input event codes: 29 = LEFTCTRL, 47 = V. ":1" press, ":0" release.
-    Command::new("ydotool")
-        .args(["key", "29:1", "47:1", "47:0", "29:0"])
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
 }
 
 /// Current mouse position in physical pixels (X11). Used to place the panel

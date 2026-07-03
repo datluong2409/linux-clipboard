@@ -7,6 +7,7 @@ mod hotkey;
 mod images;
 mod models;
 mod paste;
+mod portal;
 mod session;
 mod settings;
 mod state;
@@ -68,6 +69,7 @@ pub fn run() {
                 suppress_until: Mutex::new(None),
                 current_hotkey: Mutex::new(None),
                 monitor_paused: AtomicBool::new(false),
+                paste_backend: portal::new_cell(),
             });
 
             reconcile(&handle);

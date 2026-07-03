@@ -27,6 +27,10 @@ pub struct AppState {
     pub current_hotkey: Mutex<Option<String>>,
     /// Pause flag for the monitor (unused for now; handy for tests / settings).
     pub monitor_paused: AtomicBool,
+
+    /// Lazily-built Wayland paste backend (XDG RemoteDesktop portal + libei).
+    /// Built on the first auto-paste; reused afterwards. See `portal.rs`.
+    pub paste_backend: crate::portal::PortalCell,
 }
 
 impl AppState {

@@ -1,8 +1,10 @@
 //! Detect the display server and probe which input mechanisms are usable.
 //!
 //! - `tauri-plugin-global-shortcut` only works under X11.
-//! - Auto-paste uses `enigo` on X11; on Wayland it needs the external
-//!   `ydotool` daemon, otherwise we degrade to copy-only.
+//! - Auto-paste uses `enigo` on X11; on Wayland it goes through the XDG
+//!   RemoteDesktop portal + libei (`portal.rs`) — no `/dev/uinput`, no
+//!   `ydotool`. If the portal is unavailable at runtime we degrade to
+//!   copy-only.
 
 use crate::models::SessionInfo;
 
@@ -41,10 +43,14 @@ pub fn detect() -> SessionInfo {
         "none"
     };
 
+    // X11 uses enigo directly. Wayland goes through the RemoteDesktop portal
+    // (libei); the session/consent is negotiated lazily on the first paste, so
+    // we advertise it optimistically here and fall back to copy-only at runtime
+    // if the portal turns out to be unavailable.
     let (can_auto_paste, backend) = if kind == "x11" {
         (true, "enigo")
-    } else if bin_on_path("ydotool") {
-        (true, "ydotool")
+    } else if kind == "wayland" {
+        (true, "portal")
     } else {
         (false, "none")
     };
@@ -57,11 +63,4 @@ pub fn detect() -> SessionInfo {
         can_auto_paste,
         auto_paste_backend: backend.to_string(),
     }
-}
-
-/// True if `bin` is an executable file somewhere on `$PATH`.
-pub fn bin_on_path(bin: &str) -> bool {
-    std::env::var_os("PATH")
-        .map(|paths| std::env::split_paths(&paths).any(|dir| dir.join(bin).is_file()))
-        .unwrap_or(false)
 }

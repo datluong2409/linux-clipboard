@@ -58,7 +58,7 @@ fn position(app: &AppHandle, win: &WebviewWindow) {
     let (w, h) = win
         .outer_size()
         .map(|s| (s.width as i32, s.height as i32))
-        .unwrap_or((380, 520));
+        .unwrap_or((460, 520));
 
     let mut x = cx + 8;
     let mut y = cy + 8;
