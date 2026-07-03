@@ -25,8 +25,12 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => window::show_panel(app),
             "settings" => {
-                let _ = app.emit("open-settings", ());
+                // Show first (this emits `panel-shown`, which resets the view
+                // to the clipboard), *then* request settings — otherwise the
+                // later `panel-shown` clobbers our navigation and we land on
+                // the clipboard instead of settings.
                 window::show_panel(app);
+                let _ = app.emit("open-settings", ());
             }
             "toggle_paste" => on_toggle_paste(app),
             "quit" => app.exit(0),
