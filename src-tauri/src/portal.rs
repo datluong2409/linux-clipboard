@@ -28,7 +28,7 @@ use std::io::Write as _;
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use ashpd::desktop::remote_desktop::{
@@ -146,20 +146,26 @@ enum KeyDir {
     PressRelease,
 }
 
-impl PortalPaster {
-    /// Build a live portal session, blocking the calling (paste worker) thread.
-    /// All async work runs on a dedicated OS thread with its own current-thread
-    /// runtime, so this needs no ambient runtime. On first run it blocks
-    /// through the portal consent dialog (bounded by `CONNECT_TIMEOUT_SECS`);
-    /// later runs use the cached token and return quickly.
-    fn build_blocking() -> Result<Self, String> {
-        // `init` carries the shared State once the libei handshake completes
-        // (or an error from the portal / handshake); `ready` fires when the
-        // first keyboard device resumes.
-        let (init_tx, init_rx) = mpsc::sync_channel::<Result<Arc<Mutex<State>>, String>>(1);
-        let (ready_tx, ready_rx) = mpsc::sync_channel::<Result<(), String>>(1);
+/// A request handed to the libei worker: build a portal session, replying via
+/// these std channels (usable from the caller's arbitrary thread).
+struct BuildReq {
+    init: mpsc::SyncSender<Result<Arc<Mutex<State>>, String>>,
+    ready: mpsc::SyncSender<Result<(), String>>,
+}
 
-        std::thread::Builder::new()
+/// Handle to the single, long-lived libei worker thread. Kept process-global on
+/// purpose: ashpd caches the D-Bus session connection in its own `OnceLock`, so
+/// that connection must stay bound to a tokio runtime that lives for the whole
+/// process. A per-attempt runtime would be torn down when the user cancels the
+/// first consent dialog, killing the cached connection's I/O tasks — after
+/// which every later attempt reuses a dead connection and the dialog never
+/// reappears. One immortal worker runtime avoids that.
+static WORKER: OnceLock<tokio::sync::mpsc::UnboundedSender<BuildReq>> = OnceLock::new();
+
+fn worker() -> &'static tokio::sync::mpsc::UnboundedSender<BuildReq> {
+    WORKER.get_or_init(|| {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<BuildReq>();
+        let spawned = std::thread::Builder::new()
             .name("clipboard-libei".into())
             .spawn(move || {
                 let rt = match tokio::runtime::Builder::new_current_thread()
@@ -168,24 +174,59 @@ impl PortalPaster {
                 {
                     Ok(rt) => rt,
                     Err(e) => {
-                        let _ = init_tx.send(Err(format!("failed to build libei runtime: {e}")));
+                        eprintln!("[portal] failed to build libei runtime: {e}");
                         return;
                     }
                 };
+                // The static sender keeps this channel open forever, so the
+                // runtime (and ashpd's connection bound to it) never dies.
                 rt.block_on(async move {
-                    // Portal negotiation (incl. consent) and the !Send event
-                    // stream both live on this thread's runtime.
-                    let context = match open_context().await {
-                        Ok(c) => c,
-                        Err(e) => {
-                            let _ = init_tx.send(Err(e));
-                            return;
+                    while let Some(req) = rx.recv().await {
+                        match open_context().await {
+                            Ok(context) => {
+                                // Sends init + ready, then drives the event
+                                // stream until the session ends. This blocks the
+                                // loop, which is fine: a live session is cached
+                                // and never rebuilt. If it ever ends, we loop
+                                // back and accept new build requests.
+                                dispatcher(context, req.init, req.ready).await;
+                            }
+                            Err(e) => {
+                                // Reply failure; `ready` drops so its waiter sees
+                                // Disconnected. The runtime stays alive for the
+                                // next attempt.
+                                let _ = req.init.send(Err(e));
+                            }
                         }
-                    };
-                    dispatcher(context, init_tx, ready_tx).await;
+                    }
                 });
+            });
+        if let Err(e) = spawned {
+            eprintln!("[portal] failed to spawn libei worker thread: {e}");
+        }
+        tx
+    })
+}
+
+impl PortalPaster {
+    /// Build a live portal session, blocking the calling (paste/tray) thread.
+    /// The request is handed to the single long-lived [`worker`] runtime so
+    /// ashpd's process-global D-Bus connection stays valid across attempts (see
+    /// WORKER). On first run this blocks through the consent dialog (bounded by
+    /// `CONNECT_TIMEOUT_SECS`); later runs use the cached token and return fast.
+    fn build_blocking() -> Result<Self, String> {
+        // `init` carries the shared State once the libei handshake completes
+        // (or an error from the portal / handshake); `ready` fires when the
+        // first keyboard device resumes.
+        let (init_tx, init_rx) = mpsc::sync_channel::<Result<Arc<Mutex<State>>, String>>(1);
+        let (ready_tx, ready_rx) = mpsc::sync_channel::<Result<(), String>>(1);
+
+        worker()
+            .send(BuildReq {
+                init: init_tx,
+                ready: ready_tx,
             })
-            .map_err(|e| format!("failed to spawn libei thread: {e}"))?;
+            .map_err(|_| "libei worker thread is not running".to_string())?;
 
         // Blocks through the consent dialog on first run.
         let state = match init_rx.recv_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECS)) {
@@ -305,8 +346,8 @@ impl PortalPaster {
     }
 }
 
-/// Runs on the dedicated OS thread: handshake as sender, share `State` back via
-/// `init_tx`, then drain events so pings get answered and devices resume.
+/// Runs on the libei worker runtime: handshake as sender, share `State` back
+/// via `init_tx`, then drain events so pings get answered and devices resume.
 /// Signals `ready_tx` once a keyboard device has resumed.
 async fn dispatcher(
     context: ei::Context,
@@ -375,15 +416,25 @@ async fn open_context() -> Result<ei::Context, String> {
     let cached_token = load_token();
     let used_cached = cached_token.is_some();
 
+    // ashpd's Session has no Drop, so it must be closed explicitly on every
+    // error path — otherwise a cancelled session lingers on the (process-global)
+    // portal connection and can wedge later attempts.
     let selected = match run_session_flow(&remote, &session, cached_token.as_deref()).await {
         Ok(devices) => devices,
         Err(first_err) if used_cached => {
             eprintln!("[portal] cached token rejected ({first_err}); re-prompting for consent");
-            run_session_flow(&remote, &session, None)
-                .await
-                .map_err(portal_err)?
+            match run_session_flow(&remote, &session, None).await {
+                Ok(devices) => devices,
+                Err(err) => {
+                    let _ = session.close().await;
+                    return Err(portal_err(err));
+                }
+            }
         }
-        Err(err) => return Err(portal_err(err)),
+        Err(err) => {
+            let _ = session.close().await;
+            return Err(portal_err(err));
+        }
     };
 
     // Persist only when the portal actually returned a token (it may return
@@ -392,12 +443,27 @@ async fn open_context() -> Result<ei::Context, String> {
         save_token(new_token);
     }
 
-    let fd = remote
+    let fd = match remote
         .connect_to_eis(&session, ConnectToEISOptions::default())
         .await
-        .map_err(portal_err)?;
+    {
+        Ok(fd) => fd,
+        Err(err) => {
+            let _ = session.close().await;
+            return Err(portal_err(err));
+        }
+    };
+    // Success: deliberately do NOT close `session` — the EIS connection stays
+    // valid only while the portal session is open. Dropping the handle (no Drop
+    // impl) leaves it open, which is what we want.
     let stream = UnixStream::from(fd);
-    ei::Context::new(stream).map_err(|e| format!("failed to create libei context: {e}"))
+    match ei::Context::new(stream) {
+        Ok(ctx) => Ok(ctx),
+        Err(e) => {
+            let _ = session.close().await;
+            Err(format!("failed to create libei context: {e}"))
+        }
+    }
 }
 
 async fn run_session_flow(
