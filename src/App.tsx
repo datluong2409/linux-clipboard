@@ -63,7 +63,7 @@ export default function App() {
   }
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-black/10 bg-[var(--color-panel)] text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-[var(--color-panel-dark)] dark:text-neutral-100">
+    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-t-xl border border-black/10 bg-[var(--color-panel)] text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-[var(--color-panel-dark)] dark:text-neutral-100">
       {view === "panel" ? (
         <ClipboardPanel
           refreshKey={shownTick}
