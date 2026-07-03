@@ -3,7 +3,7 @@
 
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { Clip, OpResult, SessionInfo, Settings } from "../types";
+import type { Clip, OpResult, PasteState, SessionInfo, Settings } from "../types";
 
 export const getHistory = (limit?: number) =>
   invoke<Clip[]>("get_history", { limit });
@@ -37,8 +37,11 @@ export const setHotkey = (accel: string) =>
 
 export const getSessionInfo = () => invoke<SessionInfo>("get_session_info");
 
-export const setAutostart = (enabled: boolean) =>
-  invoke<OpResult>("set_autostart", { enabled });
+/** Turn auto-paste on/off, running the same grant/warn logic as the tray. */
+export const setAutoPaste = (enabled: boolean) =>
+  invoke("set_auto_paste", { enabled });
+
+export const getPasteState = () => invoke<PasteState>("get_paste_state");
 
 /** Turn an absolute file path into an asset: URL the webview can load. */
 export const assetUrl = (path: string) => convertFileSrc(path);

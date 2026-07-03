@@ -129,9 +129,6 @@ fn record(st: &AppState, settings: &Settings, payload: Payload, hash: &str) -> b
             rgba,
             ..
         } => {
-            if !settings.capture_images {
-                return false;
-            }
             let Some(saved) = images::save(&st.images_dir, hash, width, height, &rgba) else {
                 return false;
             };

@@ -107,7 +107,8 @@ fn paste_state(state: &AppState) -> PasteState {
     }
 }
 
-/// Handle a click on the auto-paste toggle, acting on the current state:
+/// Handle a click on the tray auto-paste toggle, acting on the current state:
+/// - `PortalMissing` → warn (nothing to toggle).
 /// - `NeedsPermission` → run the consent flow, keep the setting on.
 /// - `On` → turn the setting off (keeps the OS grant for later).
 /// - `Off` → turn the setting on (+ grant now on Wayland).
@@ -115,24 +116,41 @@ fn on_toggle_paste(app: &AppHandle) {
     match paste_state(&app.state::<AppState>()) {
         PasteState::PortalMissing => warn_portal_missing(app),
         PasteState::NeedsPermission => grant_async(app),
-        PasteState::On => {
-            persist_auto_paste(app, false);
+        PasteState::On => apply_auto_paste(app, false),
+        PasteState::Off => apply_auto_paste(app, true),
+    }
+}
+
+/// Set `Settings.auto_paste` and run the same follow-up as the tray toggle so
+/// the tray and the Settings UI behave identically: enabling on Wayland grants
+/// the RemoteDesktop permission now (or warns if no portal backend exists);
+/// disabling just stops (the OS grant stays cached). Shared with
+/// `commands::set_auto_paste`.
+pub(crate) fn apply_auto_paste(app: &AppHandle, enabled: bool) {
+    persist_auto_paste(app, enabled);
+    if !enabled {
+        refresh(app);
+        return;
+    }
+    // Re-evaluate now that it's on and act on the resulting state.
+    match paste_state(&app.state::<AppState>()) {
+        PasteState::PortalMissing => {
             refresh(app);
+            warn_portal_missing(app);
         }
-        PasteState::Off => {
-            persist_auto_paste(app, true);
-            // Re-evaluate now that it's on and act on the resulting state:
-            // grant now on Wayland (dialog), warn if the portal is missing, or
-            // just refresh.
-            match paste_state(&app.state::<AppState>()) {
-                PasteState::PortalMissing => {
-                    refresh(app);
-                    warn_portal_missing(app);
-                }
-                PasteState::NeedsPermission => grant_async(app),
-                _ => refresh(app),
-            }
-        }
+        PasteState::NeedsPermission => grant_async(app),
+        _ => refresh(app),
+    }
+}
+
+/// Current auto-paste state as a stable string for the Settings UI:
+/// "on" | "off" | "needs_permission" | "portal_missing".
+pub(crate) fn auto_paste_status(state: &AppState) -> &'static str {
+    match paste_state(state) {
+        PasteState::On => "on",
+        PasteState::Off => "off",
+        PasteState::NeedsPermission => "needs_permission",
+        PasteState::PortalMissing => "portal_missing",
     }
 }
 
@@ -174,6 +192,13 @@ fn grant_async(app: &AppHandle) {
             eprintln!("[tray] auto-paste enabled but portal consent was denied/failed");
         }
         let app_ui = app.clone();
-        let _ = app.run_on_main_thread(move || refresh(&app_ui));
+        let _ = app.run_on_main_thread(move || {
+            refresh(&app_ui);
+            // The grant flips the paste state (needs_permission → on) without
+            // changing Settings; reuse `settings-updated` to nudge the Settings
+            // UI to re-read it.
+            let settings = app_ui.state::<AppState>().settings();
+            let _ = app_ui.emit("settings-updated", &settings);
+        });
     });
 }

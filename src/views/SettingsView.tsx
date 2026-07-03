@@ -5,8 +5,14 @@ import {
   isValidAccelerator,
   prettyAccelerator,
 } from "../lib/accelerator";
-import { clearHistory, setHotkey } from "../lib/ipc";
-import type { SessionInfo, Settings } from "../types";
+import {
+  clearHistory,
+  getPasteState,
+  onEvent,
+  setAutoPaste,
+  setHotkey,
+} from "../lib/ipc";
+import type { PasteState, SessionInfo, Settings } from "../types";
 
 interface Props {
   settings: Settings | null;
@@ -72,6 +78,20 @@ export function SettingsView({
   onToast,
 }: Props) {
   const [capturing, setCapturing] = useState(false);
+  const [pasteState, setPasteState] = useState<PasteState | null>(null);
+
+  // Mirror the tray's live auto-paste state (grant/portal status). Re-read on
+  // `settings-updated`, which both the toggle and the grant flow emit.
+  useEffect(() => {
+    void getPasteState().then(setPasteState);
+    const un = onEvent(
+      "settings-updated",
+      () => void getPasteState().then(setPasteState),
+    );
+    return () => {
+      void un.then((u) => u());
+    };
+  }, []);
 
   const applyHotkey = useCallback(
     async (accel: string) => {
@@ -201,27 +221,38 @@ export function SettingsView({
             label="Tự động dán (auto-paste)"
             hint="Dán thẳng vào app đang mở khi chọn 1 mục"
             checked={settings.autoPaste}
-            onChange={(v) => onSave({ ...settings, autoPaste: v })}
-          />
-          <Toggle
-            label="Ghi lại ảnh"
-            hint="Lưu cả ảnh/screenshot vào lịch sử"
-            checked={settings.captureImages}
-            onChange={(v) => onSave({ ...settings, captureImages: v })}
-          />
-          <Toggle
-            label="Ẩn khi mất focus"
-            hint="Đóng bảng khi bấm ra ngoài"
-            checked={settings.hideOnBlur}
-            onChange={(v) => onSave({ ...settings, hideOnBlur: v })}
-          />
-          <Toggle
-            label="Khởi động cùng hệ thống"
-            hint="Chạy nền khi đăng nhập"
-            checked={settings.autostart}
-            onChange={(v) => onSave({ ...settings, autostart: v })}
+            onChange={(v) => {
+              // Optimistic UI; the backend runs the same state machine as the
+              // tray (grant flow on Wayland) and echoes back via settings-updated.
+              onLocal({ ...settings, autoPaste: v });
+              void setAutoPaste(v);
+            }}
           />
         </section>
+
+        {/* Auto-paste portal status (Wayland), mirroring the tray's states. */}
+        {pasteState === "needs_permission" && (
+          <section className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              Cần cấp quyền Remote Desktop (một lần) để tự động dán trên Wayland.
+            </p>
+            <button
+              type="button"
+              onClick={() => void setAutoPaste(true)}
+              className="mt-2 rounded-md bg-[var(--color-accent)] px-3 py-1 text-xs font-medium text-white"
+            >
+              Cấp quyền
+            </button>
+          </section>
+        )}
+        {pasteState === "portal_missing" && (
+          <section className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              Chưa có backend xdg-desktop-portal (gnome/kde) nên không thể tự
+              động dán. Nội dung vẫn được copy để bạn tự dán bằng Ctrl+V.
+            </p>
+          </section>
+        )}
 
         {/* History cap */}
         <section className="mb-4">
@@ -235,7 +266,7 @@ export function SettingsView({
               max={500}
               value={settings.historyCap}
               onChange={(e) => {
-                const n = Math.max(5, Math.min(500, Number(e.target.value) || 50));
+                const n = Math.max(5, Math.min(500, Number(e.target.value) || 25));
                 onSave({ ...settings, historyCap: n });
               }}
               className="w-20 rounded-md border border-black/10 bg-white/60 px-2 py-1 text-right text-sm outline-none dark:border-white/10 dark:bg-white/10"

@@ -25,14 +25,11 @@ pub struct Clip {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
-    /// Tauri accelerator string, e.g. "Ctrl+Alt+V".
+    /// Tauri accelerator string, e.g. "Alt+V".
     pub hotkey: String,
     pub auto_paste: bool,
-    pub autostart: bool,
     pub history_cap: u32,
-    pub capture_images: bool,
     pub max_image_bytes: u64,
-    pub hide_on_blur: bool,
     /// "cursor" (X11) | "center" (Wayland / forced).
     pub position_mode: String,
     /// "system" | "light" | "dark".
@@ -44,13 +41,10 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            hotkey: "Ctrl+Alt+V".into(),
+            hotkey: "Alt+V".into(),
             auto_paste: true,
-            autostart: false,
-            history_cap: 50,
-            capture_images: true,
+            history_cap: 25,
             max_image_bytes: 5 * 1024 * 1024,
-            hide_on_blur: true,
             position_mode: "cursor".into(),
             theme: "system".into(),
             gnome_shortcut_configured: false,

@@ -17,11 +17,8 @@ export interface Clip {
 export interface Settings {
   hotkey: string;
   autoPaste: boolean;
-  autostart: boolean;
   historyCap: number;
-  captureImages: boolean;
   maxImageBytes: number;
-  hideOnBlur: boolean;
   positionMode: "cursor" | "center";
   theme: "system" | "light" | "dark";
   gnomeShortcutConfigured: boolean;
@@ -42,3 +39,6 @@ export interface OpResult {
   ok: boolean;
   reason?: string | null;
 }
+
+/** Live auto-paste state, mirrored from the tray's state machine. */
+export type PasteState = "on" | "off" | "needs_permission" | "portal_missing";

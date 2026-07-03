@@ -56,9 +56,7 @@ pub fn run() {
             let conn = db::open(&db_path).expect("failed to open history database");
             let session = session::detect();
 
-            // Reflect the real OS autostart state into settings.
-            let mut settings_val = loaded;
-            settings_val.autostart = autostart::is_enabled(&handle);
+            let settings_val = loaded;
 
             app.manage(AppState {
                 db: Mutex::new(conn),
@@ -82,6 +80,10 @@ pub fn run() {
             // (GNOME custom keybinding, or the in-app global-shortcut plugin).
             commands::init_hotkey(&handle);
 
+            // Run-on-login is always-on (no longer user-configurable); ensure
+            // it's registered on every launch.
+            let _ = autostart::set(&handle, true);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -98,7 +100,8 @@ pub fn run() {
             commands::set_settings,
             commands::set_hotkey,
             commands::get_session_info,
-            commands::set_autostart,
+            commands::set_auto_paste,
+            commands::get_paste_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -14,11 +14,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const { settings, sessionInfo, setSettings, save } = useSettings();
 
-  const hideOnBlurRef = useRef(true);
   const viewRef = useRef<View>("panel");
-  useEffect(() => {
-    hideOnBlurRef.current = settings?.hideOnBlur ?? true;
-  }, [settings]);
   useEffect(() => {
     viewRef.current = view;
   }, [view]);
@@ -48,7 +44,7 @@ export default function App() {
         return;
       }
       if (Date.now() < ignoreUntil) return;
-      if (hideOnBlurRef.current && viewRef.current !== "settings") {
+      if (viewRef.current !== "settings") {
         void win.hide();
       }
     });

@@ -2,7 +2,7 @@
 
 use crate::models::{Clip, OpResult, SessionInfo, Settings};
 use crate::state::AppState;
-use crate::{autostart, clipboard, db, gnome, hotkey, images, settings, window};
+use crate::{clipboard, db, gnome, hotkey, images, settings, window};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
@@ -205,9 +205,6 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, settings: Settin
     if settings.hotkey != old.hotkey {
         let _ = apply_hotkey(&app, &st.session.hotkey_backend, &settings.hotkey);
     }
-    if settings.autostart != old.autostart {
-        let _ = autostart::set(&app, settings.autostart);
-    }
     if settings.auto_paste != old.auto_paste {
         // Keep the tray's auto-paste toggle label in sync with the Settings UI.
         let app2 = app.clone();
@@ -249,6 +246,20 @@ pub fn set_hotkey(app: AppHandle, state: State<'_, AppState>, accel: String) -> 
 #[tauri::command]
 pub fn get_session_info(state: State<'_, AppState>) -> SessionInfo {
     state.session.clone()
+}
+
+/// Turn auto-paste on/off from the Settings UI, running the exact same state
+/// machine as the tray toggle (grant flow on Wayland, portal-missing warning).
+#[tauri::command]
+pub fn set_auto_paste(app: AppHandle, enabled: bool) {
+    crate::tray::apply_auto_paste(&app, enabled);
+}
+
+/// The live auto-paste state for the Settings UI:
+/// "on" | "off" | "needs_permission" | "portal_missing".
+#[tauri::command]
+pub fn get_paste_state(state: State<'_, AppState>) -> String {
+    crate::tray::auto_paste_status(&state).to_string()
 }
 
 /// The shell command a GNOME custom keybinding runs to toggle the panel.
@@ -293,20 +304,5 @@ pub fn init_hotkey(app: &AppHandle) {
             g.gnome_shortcut_configured = true;
         }
         let _ = settings::save(&st.config_path, &st.settings());
-    }
-}
-
-#[tauri::command]
-pub fn set_autostart(app: AppHandle, state: State<'_, AppState>, enabled: bool) -> OpResult {
-    match autostart::set(&app, enabled) {
-        Ok(()) => {
-            let st = state.inner();
-            if let Ok(mut g) = st.settings.write() {
-                g.autostart = enabled;
-            }
-            let _ = settings::save(&st.config_path, &st.settings());
-            OpResult::ok()
-        }
-        Err(e) => OpResult::err(e),
     }
 }
