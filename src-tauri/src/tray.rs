@@ -56,20 +56,22 @@ pub fn refresh(app: &AppHandle) {
 }
 
 fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
-    let show = MenuItemBuilder::with_id("show", "Show clipboard").build(app)?;
-    let settings = MenuItemBuilder::with_id("settings", "Settings").build(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+    let state = app.state::<AppState>();
+    let tr = state.lang();
+
+    let show = MenuItemBuilder::with_id("show", tr.tray_show()).build(app)?;
+    let settings = MenuItemBuilder::with_id("settings", tr.tray_settings()).build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", tr.tray_quit()).build(app)?;
 
     let mut builder = MenuBuilder::new(app).items(&[&show, &settings]);
 
     // Auto-paste on/off toggle (only shown where auto-paste is possible at all).
-    let state = app.state::<AppState>();
     if state.session.can_auto_paste {
         let label = match paste_state(&state) {
-            PasteState::PortalMissing => "Auto-paste: thiếu portal ⚠",
-            PasteState::NeedsPermission => "Auto-paste: cần cấp quyền ⚠",
-            PasteState::On => "Auto-paste: Bật ✓",
-            PasteState::Off => "Auto-paste: Tắt",
+            PasteState::PortalMissing => tr.tray_auto_paste_portal_missing(),
+            PasteState::NeedsPermission => tr.tray_auto_paste_needs_permission(),
+            PasteState::On => tr.tray_auto_paste_on(),
+            PasteState::Off => tr.tray_auto_paste_off(),
         };
         let toggle = MenuItemBuilder::with_id("toggle_paste", label).build(app)?;
         builder = builder.item(&toggle);
@@ -159,10 +161,11 @@ pub(crate) fn auto_paste_status(state: &AppState) -> &'static str {
 fn warn_portal_missing(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
+        let tr = app.state::<AppState>().lang();
         let _ = app
             .dialog()
-            .message(crate::portal::PORTAL_MISSING_MSG)
-            .title("Thiếu xdg-desktop-portal")
+            .message(tr.portal_missing_body())
+            .title(tr.portal_missing_title())
             .blocking_show();
     });
 }

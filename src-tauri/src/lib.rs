@@ -4,6 +4,7 @@ mod commands;
 mod db;
 mod gnome;
 mod hotkey;
+mod i18n;
 mod images;
 mod models;
 mod paste;

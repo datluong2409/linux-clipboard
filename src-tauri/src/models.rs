@@ -36,6 +36,14 @@ pub struct Settings {
     pub theme: String,
     pub gnome_shortcut_configured: bool,
     pub first_run_done: bool,
+    /// UI language: "en" | "vi". `#[serde(default)]` keeps older settings.json
+    /// files (written before this field existed) loadable instead of resetting.
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_language() -> String {
+    "en".into()
 }
 
 impl Default for Settings {
@@ -49,6 +57,7 @@ impl Default for Settings {
             theme: "system".into(),
             gnome_shortcut_configured: false,
             first_run_done: false,
+            language: default_language(),
         }
     }
 }

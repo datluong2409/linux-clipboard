@@ -1,3 +1,4 @@
+import { useI18n } from "../lib/i18n";
 import { assetUrl } from "../lib/ipc";
 import type { Clip } from "../types";
 import { IconImage, IconPin, IconPinFilled, IconTrash } from "./Icons";
@@ -17,6 +18,7 @@ export function ClipboardItem({
   onTogglePin,
   onDelete,
 }: Props) {
+  const { t } = useI18n();
   return (
     <div
       onClick={onPaste}
@@ -43,7 +45,7 @@ export function ClipboardItem({
       <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition group-hover:opacity-100">
         <button
           type="button"
-          title={clip.pinned ? "Bỏ ghim" : "Ghim"}
+          title={clip.pinned ? t("unpin") : t("pin")}
           onClick={(e) => {
             e.stopPropagation();
             onTogglePin();
@@ -58,7 +60,7 @@ export function ClipboardItem({
         </button>
         <button
           type="button"
-          title="Xoá"
+          title={t("delete")}
           onClick={(e) => {
             e.stopPropagation();
             onDelete();

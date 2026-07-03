@@ -99,16 +99,6 @@ pub fn enable(cell: &PortalCell) -> bool {
     get_or_build(cell).is_some()
 }
 
-/// User-facing message when no RemoteDesktop portal backend is installed. Names
-/// the packages so the user can fix it.
-pub const PORTAL_MISSING_MSG: &str = "Máy này chưa có portal RemoteDesktop nên không thể tự động dán trên Wayland.\n\n\
-Hãy cài gói tương ứng với desktop của bạn:\n  \
-• GNOME: xdg-desktop-portal-gnome\n  \
-• KDE:   xdg-desktop-portal-kde\n\n\
-Ví dụ trên Ubuntu/Debian:\n  \
-sudo apt install xdg-desktop-portal-gnome\n\n\
-Nội dung vẫn được copy — bạn có thể tự dán bằng Ctrl+V.";
-
 /// True if an installed xdg-desktop-portal backend declares the RemoteDesktop
 /// impl interface (i.e. xdg-desktop-portal-gnome / -kde or equivalent is
 /// present). Scans the standard `.portal` files under `$XDG_DATA_DIRS` for

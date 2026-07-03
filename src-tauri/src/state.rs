@@ -42,6 +42,12 @@ impl AppState {
         self.settings.read().map(|s| s.clone()).unwrap_or_default()
     }
 
+    /// The user's chosen UI language, for localizing backend-rendered text
+    /// (tray menu, native dialogs).
+    pub fn lang(&self) -> crate::i18n::Lang {
+        crate::i18n::Lang::from_code(&self.settings().language)
+    }
+
     /// Arm suppression before a programmatic clipboard write.
     pub fn arm_suppress(&self) {
         if let Ok(mut guard) = self.suppress_until.lock() {

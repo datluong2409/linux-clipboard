@@ -4,6 +4,7 @@ import { ClipboardPanel } from "./components/ClipboardPanel";
 import { SettingsView } from "./views/SettingsView";
 import { Toast } from "./components/Toast";
 import { useSettings } from "./hooks/useSettings";
+import { I18nProvider } from "./lib/i18n";
 import { onEvent } from "./lib/ipc";
 
 type View = "panel" | "settings";
@@ -59,24 +60,26 @@ export default function App() {
   }
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-t-xl border border-black/10 bg-[var(--color-panel)] text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-[var(--color-panel-dark)] dark:text-neutral-100">
-      {view === "panel" ? (
-        <ClipboardPanel
-          refreshKey={shownTick}
-          onToast={showToast}
-          onOpenSettings={() => setView("settings")}
-        />
-      ) : (
-        <SettingsView
-          settings={settings}
-          sessionInfo={sessionInfo}
-          onSave={save}
-          onLocal={setSettings}
-          onBack={() => setView("panel")}
-          onToast={showToast}
-        />
-      )}
-      {toast && <Toast message={toast} />}
-    </div>
+    <I18nProvider lang={settings?.language ?? "en"}>
+      <div className="relative flex h-full w-full flex-col overflow-hidden rounded-t-xl border border-black/10 bg-[var(--color-panel)] text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-[var(--color-panel-dark)] dark:text-neutral-100">
+        {view === "panel" ? (
+          <ClipboardPanel
+            refreshKey={shownTick}
+            onToast={showToast}
+            onOpenSettings={() => setView("settings")}
+          />
+        ) : (
+          <SettingsView
+            settings={settings}
+            sessionInfo={sessionInfo}
+            onSave={save}
+            onLocal={setSettings}
+            onBack={() => setView("panel")}
+            onToast={showToast}
+          />
+        )}
+        {toast && <Toast message={toast} />}
+      </div>
+    </I18nProvider>
   );
 }

@@ -135,28 +135,26 @@ pub fn paste_item(app: AppHandle, state: State<'_, AppState>, id: i64) -> OpResu
 /// a safe copy-only fallback.
 fn prompt_enable_paste(app: AppHandle) {
     std::thread::spawn(move || {
+        let tr = app.state::<AppState>().lang();
+
         // No RemoteDesktop portal backend installed → auto-paste is impossible;
         // warn with install instructions instead of offering to enable.
         if !crate::portal::remote_desktop_available() {
             let _ = app
                 .dialog()
-                .message(crate::portal::PORTAL_MISSING_MSG)
-                .title("Thiếu xdg-desktop-portal")
+                .message(tr.portal_missing_body())
+                .title(tr.portal_missing_title())
                 .blocking_show();
             return;
         }
 
         let enable = app
             .dialog()
-            .message(
-                "Trên Wayland, để tự động dán vào ứng dụng bạn cần cấp quyền \
-                 Remote Desktop một lần.\n\nBật ngay? Nếu để sau, nội dung vẫn đã \
-                 được copy — bạn tự dán bằng Ctrl+V.",
-            )
-            .title("Bật auto-paste?")
+            .message(tr.enable_paste_body())
+            .title(tr.enable_paste_title())
             .buttons(MessageDialogButtons::OkCancelCustom(
-                "Bật ngay".into(),
-                "Để sau".into(),
+                tr.enable_paste_now().into(),
+                tr.enable_paste_later().into(),
             ))
             .blocking_show();
 
@@ -168,11 +166,8 @@ fn prompt_enable_paste(app: AppHandle) {
         } else {
             let _ = app
                 .dialog()
-                .message(
-                    "Nội dung đã được copy vào clipboard. Bạn có thể bật auto-paste \
-                     sau này trong Settings, hoặc ở menu khay hệ thống (tray).",
-                )
-                .title("Đã copy")
+                .message(tr.copied_body())
+                .title(tr.copied_title())
                 .blocking_show();
         }
     });
@@ -205,8 +200,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, settings: Settin
     if settings.hotkey != old.hotkey {
         let _ = apply_hotkey(&app, &st.session.hotkey_backend, &settings.hotkey);
     }
-    if settings.auto_paste != old.auto_paste {
-        // Keep the tray's auto-paste toggle label in sync with the Settings UI.
+    if settings.auto_paste != old.auto_paste || settings.language != old.language {
+        // Rebuild the tray menu so its auto-paste label and (on a language
+        // change) all its item labels reflect the new settings.
         let app2 = app.clone();
         let _ = app.run_on_main_thread(move || crate::tray::refresh(&app2));
     }

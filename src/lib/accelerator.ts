@@ -50,18 +50,21 @@ export function eventToAccelerator(e: KeyboardEvent): string | null {
   return parts.join("+");
 }
 
+/** Stable reason code the caller maps to a localized message (see i18n). */
+export type AcceleratorError = "need_main_key" | "need_modifier";
+
 export function isValidAccelerator(accel: string): {
   ok: boolean;
-  reason?: string;
+  reason?: AcceleratorError;
 } {
   const parts = accel.split("+");
   const key = parts[parts.length - 1];
   const mods = parts.slice(0, -1);
   if (MODIFIERS.includes(key)) {
-    return { ok: false, reason: "Cần một phím chính, không chỉ phím bổ trợ." };
+    return { ok: false, reason: "need_main_key" };
   }
   if (mods.length === 0) {
-    return { ok: false, reason: "Cần ít nhất một phím bổ trợ (Ctrl / Alt / Super)." };
+    return { ok: false, reason: "need_modifier" };
   }
   return { ok: true };
 }

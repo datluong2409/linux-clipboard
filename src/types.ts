@@ -23,6 +23,7 @@ export interface Settings {
   theme: "system" | "light" | "dark";
   gnomeShortcutConfigured: boolean;
   firstRunDone: boolean;
+  language: "en" | "vi";
 }
 
 export interface SessionInfo {

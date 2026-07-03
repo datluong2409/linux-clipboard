@@ -4,6 +4,7 @@ import { EmptyState } from "./EmptyState";
 import { SearchBar } from "./SearchBar";
 import { IconSettings, IconTrash } from "./Icons";
 import { useHistory } from "../hooks/useHistory";
+import { useI18n } from "../lib/i18n";
 import {
   clearHistory,
   deleteItem,
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const { items, reload } = useHistory(query, refreshKey);
   const [sel, setSel] = useState(0);
@@ -45,9 +47,9 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
   const doPaste = useCallback(
     async (id: number) => {
       const r = await pasteItem(id);
-      if (r?.reason === "copied") onToast("Đã copy — nhấn Ctrl+V để dán");
+      if (r?.reason === "copied") onToast(t("copiedPressCtrlV"));
     },
-    [onToast],
+    [onToast, t],
   );
 
   const onTogglePin = useCallback(
@@ -115,7 +117,7 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
         </div>
         <button
           type="button"
-          title="Xoá lịch sử (giữ ghim)"
+          title={t("clearHistoryKeepPinned")}
           onClick={async () => {
             await clearHistory(true);
             void reload();
@@ -126,7 +128,7 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
         </button>
         <button
           type="button"
-          title="Cài đặt"
+          title={t("settings")}
           onClick={onOpenSettings}
           className="rounded-md p-1.5 text-neutral-500 hover:bg-black/10 dark:hover:bg-white/10"
         >
@@ -142,7 +144,7 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
             {pinned.length > 0 && (
               <section className="flex flex-col gap-2">
                 <h2 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-                  Đã ghim
+                  {t("pinned")}
                 </h2>
                 {pinned.map((clip, i) => renderItem(clip, i))}
               </section>
@@ -151,7 +153,7 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
               <section className="flex flex-col gap-2">
                 {!query && (
                   <h2 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-                    Gần đây
+                    {t("recent")}
                   </h2>
                 )}
                 {rest.map((clip, i) => renderItem(clip, pinned.length + i))}
