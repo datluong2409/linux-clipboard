@@ -1,4 +1,8 @@
-# Linux Clipboard
+<p align="center">
+  <img src="linux-clipboard.png" alt="Linux Clipboard logo" width="160" />
+</p>
+
+<h1 align="center">Linux Clipboard</h1>
 
 A Windows-10-style clipboard history manager for Linux (Ubuntu / GNOME), built
 with **Tauri v2 + React + TypeScript + Tailwind** (frontend) and **Rust**
