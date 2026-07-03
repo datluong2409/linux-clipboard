@@ -24,6 +24,54 @@ pub fn configure(command: &str, gnome_accel: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Idempotent startup helper: create our keybinding only if a usable one isn't
+/// already there, so we don't clobber a combo the user may have retuned in
+/// GNOME's own keyboard settings. Returns `Ok(true)` if it wrote a new binding,
+/// `Ok(false)` if a valid one already existed. Explicit rebinds (from the
+/// Settings UI) call [`configure`] directly to force-overwrite.
+pub fn ensure(command: &str, gnome_accel: &str) -> Result<bool, String> {
+    if is_configured() {
+        return Ok(false);
+    }
+    configure(command, gnome_accel)?;
+    Ok(true)
+}
+
+/// Whether our dedicated slot is already registered and usable: listed in
+/// `custom-keybindings`, with a non-empty binding and a command whose binary
+/// still exists. A blank value or a command left over from a previous install
+/// location (e.g. AppImage → `.deb`) counts as "not configured" so [`ensure`]
+/// re-creates it.
+fn is_configured() -> bool {
+    let list = gsettings_get(&[SCHEMA, "custom-keybindings"]).unwrap_or_default();
+    if !parse_list(&list).iter().any(|s| s == SLOT) {
+        return false;
+    }
+    let path_schema = format!("{KB_SCHEMA}:{SLOT}");
+    let command = gsettings_get(&[&path_schema, "command"]).unwrap_or_default();
+    let binding = gsettings_get(&[&path_schema, "binding"]).unwrap_or_default();
+    !is_unset(&binding) && command_binary_exists(&command)
+}
+
+/// The command is stored quoted, e.g. `'/usr/bin/linux-clipboard --toggle'`.
+/// Pull off the leading executable path and check it still exists on disk.
+fn command_binary_exists(command: &str) -> bool {
+    if is_unset(command) {
+        return false;
+    }
+    let unquoted = command.trim().trim_matches('\'').trim_matches('"');
+    match unquoted.split_whitespace().next() {
+        Some(bin) if !bin.is_empty() => std::path::Path::new(bin).exists(),
+        _ => false,
+    }
+}
+
+/// A gsettings string value that is blank or the quoted empty string `''`.
+fn is_unset(v: &str) -> bool {
+    let v = v.trim();
+    v.is_empty() || v == "''" || v == "\"\""
+}
+
 /// Translate a Tauri accelerator ("Ctrl+Alt+V") to a GNOME/GTK one ("<Control><Alt>v").
 pub fn to_gnome_accel(tauri_accel: &str) -> String {
     let mut mods = String::new();

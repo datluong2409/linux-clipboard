@@ -313,19 +313,53 @@ fn apply_hotkey(app: &AppHandle, backend: &str, accel: &str) -> Result<(), Strin
     }
 }
 
-/// Install the panel hotkey at startup per the detected backend: (re)sync the
-/// GNOME custom keybinding, or register the in-app global shortcut. No-op when
-/// there is no automatic backend for this session.
+/// Install the panel hotkey at startup per the detected backend. Emits a
+/// `[hotkey]` line on stderr for every outcome so a user who launches the app
+/// from a terminal can see whether the shortcut was set up (and why not).
 pub fn init_hotkey(app: &AppHandle) {
     let Some(st) = app.try_state::<AppState>() else {
         return;
     };
     let backend = st.session.hotkey_backend.clone();
     let accel = st.settings().hotkey;
-    if apply_hotkey(app, &backend, &accel).is_ok() && backend == "gnome" {
-        if let Ok(mut g) = st.settings.write() {
-            g.gnome_shortcut_configured = true;
+    match backend.as_str() {
+        // GNOME (X11 or Wayland): the custom keybinding lives in gsettings and
+        // persists across launches, so create it only when missing — don't
+        // overwrite a combo the user may have retuned in GNOME's own settings.
+        // (A rebind from our Settings UI still force-overwrites via set_hotkey.)
+        "gnome" => {
+            let command = match gnome_toggle_command() {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("[hotkey] cannot resolve toggle command: {e}");
+                    return;
+                }
+            };
+            match gnome::ensure(&command, &gnome::to_gnome_accel(&accel)) {
+                Ok(created) => {
+                    if created {
+                        eprintln!("[hotkey] created GNOME custom shortcut for {accel}");
+                    } else {
+                        eprintln!("[hotkey] GNOME custom shortcut already present, leaving as-is");
+                    }
+                    if let Ok(mut g) = st.settings.write() {
+                        g.gnome_shortcut_configured = true;
+                    }
+                    let _ = settings::save(&st.config_path, &st.settings());
+                }
+                Err(e) => eprintln!("[hotkey] failed to create GNOME custom shortcut: {e}"),
+            }
         }
-        let _ = settings::save(&st.config_path, &st.settings());
+        // Non-GNOME X11: the in-app global-shortcut plugin registers per-process,
+        // so it must be (re)bound on every launch.
+        "global-shortcut" => {
+            if let Err(e) = hotkey::rebind(app, &accel) {
+                eprintln!("[hotkey] failed to register global shortcut {accel}: {e}");
+            }
+        }
+        // No automatic trigger (e.g. non-GNOME Wayland): the user binds it by hand.
+        _ => eprintln!(
+            "[hotkey] no automatic hotkey backend for this session; bind {accel} manually to `<app> --toggle`"
+        ),
     }
 }
