@@ -12,7 +12,7 @@ use crate::window;
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, Wry};
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
 const TRAY_ID: &str = "main-tray";
 
@@ -33,6 +33,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                 let _ = app.emit("open-settings", ());
             }
             "toggle_paste" => on_toggle_paste(app),
+            "check_updates" => on_check_updates(app),
             "quit" => app.exit(0),
             _ => {}
         });
@@ -76,6 +77,10 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         let toggle = MenuItemBuilder::with_id("toggle_paste", label).build(app)?;
         builder = builder.item(&toggle);
     }
+
+    let check_updates =
+        MenuItemBuilder::with_id("check_updates", tr.tray_check_updates()).build(app)?;
+    builder = builder.item(&check_updates);
 
     builder.item(&quit).build()
 }
@@ -121,6 +126,52 @@ fn on_toggle_paste(app: &AppHandle) {
         PasteState::On => apply_auto_paste(app, false),
         PasteState::Off => apply_auto_paste(app, true),
     }
+}
+
+/// Check GitHub for a newer release, off the main thread (the network GET and
+/// the native dialogs both block). On success either offer to open the release
+/// page (newer version) or confirm the app is up to date; on failure, warn.
+fn on_check_updates(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let current = app.package_info().version.to_string();
+        let result = crate::updater::check(&current);
+        let tr = app.state::<AppState>().lang();
+
+        if result.error.is_some() {
+            let _ = app
+                .dialog()
+                .message(tr.update_error_body())
+                .title(tr.update_error_title())
+                .blocking_show();
+            return;
+        }
+
+        if result.update_available {
+            let latest = result.latest_version.as_deref().unwrap_or("");
+            let open = app
+                .dialog()
+                .message(tr.update_available_body(latest, &result.current_version))
+                .title(tr.update_available_title())
+                .buttons(MessageDialogButtons::OkCancelCustom(
+                    tr.update_open().into(),
+                    tr.update_later().into(),
+                ))
+                .blocking_show();
+            if open {
+                let url = result
+                    .release_url
+                    .unwrap_or_else(crate::updater::releases_page);
+                crate::updater::open_url(&url);
+            }
+        } else {
+            let _ = app
+                .dialog()
+                .message(tr.update_up_to_date_body(&result.current_version))
+                .title(tr.update_up_to_date_title())
+                .blocking_show();
+        }
+    });
 }
 
 /// Set `Settings.auto_paste` and run the same follow-up as the tray toggle so

@@ -79,6 +79,33 @@ pub struct SessionInfo {
     pub auto_paste_backend: String, // "enigo" (X11) | "portal" (Wayland libei) | "none"
 }
 
+/// Result of a GitHub-Releases update check, surfaced to the tray + Settings UI.
+/// `error` is `None` on success (including "no release published yet", which
+/// reports as up-to-date); a stable code otherwise: "network" | "parse" |
+/// "internal".
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCheck {
+    pub current_version: String,
+    pub latest_version: Option<String>,
+    pub update_available: bool,
+    pub release_url: Option<String>,
+    pub error: Option<String>,
+}
+
+impl UpdateCheck {
+    /// A failed check (couldn't reach GitHub / parse the response).
+    pub fn failed(current: String, error: &str) -> Self {
+        Self {
+            current_version: current,
+            latest_version: None,
+            update_available: false,
+            release_url: None,
+            error: Some(error.into()),
+        }
+    }
+}
+
 /// Generic result for operations the frontend wants to react to (e.g. rebind).
 #[derive(Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]

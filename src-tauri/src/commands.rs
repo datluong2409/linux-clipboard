@@ -1,8 +1,8 @@
 //! The `#[tauri::command]` surface invoked from the React frontend.
 
-use crate::models::{Clip, OpResult, SessionInfo, Settings};
+use crate::models::{Clip, OpResult, SessionInfo, Settings, UpdateCheck};
 use crate::state::AppState;
-use crate::{clipboard, db, gnome, hotkey, images, settings, window};
+use crate::{clipboard, db, gnome, hotkey, images, settings, updater, window};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
@@ -256,6 +256,33 @@ pub fn set_auto_paste(app: AppHandle, enabled: bool) {
 #[tauri::command]
 pub fn get_paste_state(state: State<'_, AppState>) -> String {
     crate::tray::auto_paste_status(&state).to_string()
+}
+
+/// The running app version (from tauri.conf.json / Cargo.toml), shown in the
+/// Settings "Updates" section.
+#[tauri::command]
+pub fn get_version(app: AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+/// Ask GitHub whether a newer release exists. Runs the blocking HTTPS GET off
+/// the async runtime so the UI stays responsive while the network call is in
+/// flight.
+#[tauri::command]
+pub async fn check_for_updates(app: AppHandle) -> UpdateCheck {
+    let current = app.package_info().version.to_string();
+    let fallback = current.clone();
+    tauri::async_runtime::spawn_blocking(move || updater::check(&current))
+        .await
+        .unwrap_or_else(|_| UpdateCheck::failed(fallback, "internal"))
+}
+
+/// Open a release URL (or the latest-release page) in the user's browser so
+/// they can download the new `.deb` / AppImage.
+#[tauri::command]
+pub fn open_release_page(url: Option<String>) {
+    let target = url.unwrap_or_else(updater::releases_page);
+    updater::open_url(&target);
 }
 
 /// The shell command a GNOME custom keybinding runs to toggle the panel.

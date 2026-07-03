@@ -48,6 +48,16 @@ const en = {
   portalMissing:
     "No xdg-desktop-portal backend (gnome/kde), so auto-paste isn't possible. The content is still copied for you to paste with Ctrl+V.",
 
+  // Settings — updates
+  updates: "Updates",
+  currentVersion: "Current version",
+  checkForUpdates: "Check for updates",
+  checkingUpdates: "Checking…",
+  upToDate: "You're on the latest version.",
+  updateAvailable: "New version available:",
+  downloadUpdate: "Download",
+  updateCheckFailed: "Couldn't check for updates. Check your connection and try again.",
+
   // Settings — preferences
   language: "Language",
   maxItems: "Max items",
@@ -106,6 +116,15 @@ const vi: Record<TKey, string> = {
   grantPermission: "Cấp quyền",
   portalMissing:
     "Chưa có backend xdg-desktop-portal (gnome/kde) nên không thể tự động dán. Nội dung vẫn được copy để bạn tự dán bằng Ctrl+V.",
+
+  updates: "Cập nhật",
+  currentVersion: "Phiên bản hiện tại",
+  checkForUpdates: "Kiểm tra cập nhật",
+  checkingUpdates: "Đang kiểm tra…",
+  upToDate: "Bạn đang dùng phiên bản mới nhất.",
+  updateAvailable: "Đã có phiên bản mới:",
+  downloadUpdate: "Tải về",
+  updateCheckFailed: "Không thể kiểm tra cập nhật. Hãy kiểm tra kết nối mạng và thử lại.",
 
   language: "Ngôn ngữ",
   maxItems: "Số mục tối đa",

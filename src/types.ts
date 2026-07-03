@@ -41,5 +41,15 @@ export interface OpResult {
   reason?: string | null;
 }
 
+/** Result of a GitHub-Releases update check (mirror of Rust `UpdateCheck`). */
+export interface UpdateCheck {
+  currentVersion: string;
+  latestVersion: string | null;
+  updateAvailable: boolean;
+  releaseUrl: string | null;
+  /** `null` on success; "network" | "parse" | "internal" on failure. */
+  error: string | null;
+}
+
 /** Live auto-paste state, mirrored from the tray's state machine. */
 export type PasteState = "on" | "off" | "needs_permission" | "portal_missing";

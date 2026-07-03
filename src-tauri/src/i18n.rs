@@ -36,6 +36,10 @@ impl Lang {
         self.pick("Settings", "Cài đặt")
     }
 
+    pub fn tray_check_updates(self) -> &'static str {
+        self.pick("Check for updates", "Kiểm tra cập nhật")
+    }
+
     pub fn tray_quit(self) -> &'static str {
         self.pick("Quit", "Thoát")
     }
@@ -120,6 +124,57 @@ impl Lang {
              auto-paste later in Settings, or from the system tray menu.",
             "Nội dung đã được copy vào clipboard. Bạn có thể bật auto-paste sau \
              này trong Settings, hoặc ở menu khay hệ thống (tray).",
+        )
+    }
+
+    // --- Update check dialogs (tray) ---
+
+    pub fn update_available_title(self) -> &'static str {
+        self.pick("Update available", "Có bản cập nhật")
+    }
+
+    /// Body for "a newer version exists" (interpolates both versions).
+    pub fn update_available_body(self, latest: &str, current: &str) -> String {
+        match self {
+            Lang::En => format!(
+                "A new version {latest} is available (you have {current}).\n\n\
+                 Open the download page?"
+            ),
+            Lang::Vi => format!(
+                "Đã có phiên bản mới {latest} (bạn đang dùng {current}).\n\n\
+                 Mở trang tải về?"
+            ),
+        }
+    }
+
+    pub fn update_open(self) -> &'static str {
+        self.pick("Open", "Mở")
+    }
+
+    pub fn update_later(self) -> &'static str {
+        self.pick("Later", "Để sau")
+    }
+
+    pub fn update_up_to_date_title(self) -> &'static str {
+        self.pick("You're up to date", "Bạn đang ở bản mới nhất")
+    }
+
+    pub fn update_up_to_date_body(self, current: &str) -> String {
+        match self {
+            Lang::En => format!("You're on the latest version ({current})."),
+            Lang::Vi => format!("Bạn đang dùng phiên bản mới nhất ({current})."),
+        }
+    }
+
+    pub fn update_error_title(self) -> &'static str {
+        self.pick("Update check failed", "Kiểm tra cập nhật thất bại")
+    }
+
+    pub fn update_error_body(self) -> &'static str {
+        self.pick(
+            "Couldn't check for updates. Please check your internet connection \
+             and try again.",
+            "Không thể kiểm tra cập nhật. Vui lòng kiểm tra kết nối mạng và thử lại.",
         )
     }
 }

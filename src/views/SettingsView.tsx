@@ -7,13 +7,16 @@ import {
 } from "../lib/accelerator";
 import { LANGUAGES, useI18n, type Lang } from "../lib/i18n";
 import {
+  checkForUpdates,
   clearHistory,
   getPasteState,
+  getVersion,
   onEvent,
+  openReleasePage,
   setAutoPaste,
   setHotkey,
 } from "../lib/ipc";
-import type { PasteState, SessionInfo, Settings } from "../types";
+import type { PasteState, SessionInfo, Settings, UpdateCheck } from "../types";
 
 interface Props {
   settings: Settings | null;
@@ -81,6 +84,23 @@ export function SettingsView({
   const { t } = useI18n();
   const [capturing, setCapturing] = useState(false);
   const [pasteState, setPasteState] = useState<PasteState | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [updateResult, setUpdateResult] = useState<UpdateCheck | null>(null);
+
+  // Current app version for the Updates section (cheap backend call, no network).
+  useEffect(() => {
+    void getVersion().then(setVersion);
+  }, []);
+
+  const runUpdateCheck = useCallback(async () => {
+    setChecking(true);
+    try {
+      setUpdateResult(await checkForUpdates());
+    } finally {
+      setChecking(false);
+    }
+  }, []);
 
   // Mirror the tray's live auto-paste state (grant/portal status). Re-read on
   // `settings-updated`, which both the toggle and the grant flow emit.
@@ -286,6 +306,53 @@ export function SettingsView({
               className="w-20 rounded-md border border-black/10 bg-white/60 px-2 py-1 text-right text-sm outline-none dark:border-white/10 dark:bg-white/10"
             />
           </label>
+        </section>
+
+        {/* Updates */}
+        <section className="mb-4">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            {t("updates")}
+          </h2>
+          <div className="flex items-center justify-between gap-3 py-1">
+            <span className="text-sm text-neutral-800 dark:text-neutral-100">
+              {t("currentVersion")}
+            </span>
+            <span className="font-mono text-sm text-neutral-600 dark:text-neutral-300">
+              {version ?? "…"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void runUpdateCheck()}
+            disabled={checking}
+            className="mt-1 w-full rounded-md border border-black/10 bg-white/60 px-3 py-2 text-sm transition hover:border-black/20 disabled:opacity-60 dark:border-white/10 dark:bg-white/10"
+          >
+            {checking ? t("checkingUpdates") : t("checkForUpdates")}
+          </button>
+          {updateResult && !checking && (
+            updateResult.error ? (
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                {t("updateCheckFailed")}
+              </p>
+            ) : updateResult.updateAvailable ? (
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-[var(--color-accent)]">
+                  {t("updateAvailable")} {updateResult.latestVersion}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void openReleasePage(updateResult.releaseUrl)}
+                  className="shrink-0 rounded-md bg-[var(--color-accent)] px-3 py-1 text-xs font-medium text-white"
+                >
+                  {t("downloadUpdate")}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+                {t("upToDate")}
+              </p>
+            )
+          )}
         </section>
 
         {/* Danger zone */}

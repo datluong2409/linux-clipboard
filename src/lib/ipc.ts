@@ -3,7 +3,14 @@
 
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { Clip, OpResult, PasteState, SessionInfo, Settings } from "../types";
+import type {
+  Clip,
+  OpResult,
+  PasteState,
+  SessionInfo,
+  Settings,
+  UpdateCheck,
+} from "../types";
 
 export const getHistory = (limit?: number) =>
   invoke<Clip[]>("get_history", { limit });
@@ -42,6 +49,16 @@ export const setAutoPaste = (enabled: boolean) =>
   invoke("set_auto_paste", { enabled });
 
 export const getPasteState = () => invoke<PasteState>("get_paste_state");
+
+/** The running app version (e.g. "0.1.0"). */
+export const getVersion = () => invoke<string>("get_version");
+
+/** Ask the backend to check GitHub Releases for a newer version. */
+export const checkForUpdates = () => invoke<UpdateCheck>("check_for_updates");
+
+/** Open a release URL (or the latest-release page when omitted) in the browser. */
+export const openReleasePage = (url?: string | null) =>
+  invoke("open_release_page", { url: url ?? null });
 
 /** Turn an absolute file path into an asset: URL the webview can load. */
 export const assetUrl = (path: string) => convertFileSrc(path);

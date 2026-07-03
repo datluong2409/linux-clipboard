@@ -13,6 +13,7 @@ mod session;
 mod settings;
 mod state;
 mod tray;
+mod updater;
 mod util;
 mod window;
 
@@ -103,6 +104,9 @@ pub fn run() {
             commands::get_session_info,
             commands::set_auto_paste,
             commands::get_paste_state,
+            commands::get_version,
+            commands::check_for_updates,
+            commands::open_release_page,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

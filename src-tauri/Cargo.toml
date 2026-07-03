@@ -31,6 +31,7 @@ enigo = "0.2"                                      # synthetic Ctrl+V (X11 needs
 rusqlite = { version = "0.32", features = ["bundled"] }  # history DB (SQLite compiled in)
 image = "0.25"                                     # decode/encode PNG + thumbnails
 sha2 = "0.10"                                      # content hashing for dedup/suppress
+ureq = { version = "2", features = ["json"] }      # one-shot HTTPS GET to the GitHub Releases API (update check)
 
 # Wayland auto-paste via the XDG RemoteDesktop portal + libei (see portal.rs).
 # Replaces ydotool/uinput: sends Ctrl+V through the compositor, no /dev/uinput.
