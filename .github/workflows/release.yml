@@ -67,6 +67,10 @@ jobs:
           cp "$DEB"      "dist-artifacts/linux-clipboard_${VERSION}_amd64.deb"
           cp "$APPIMAGE" "dist-artifacts/linux-clipboard_${VERSION}_amd64.AppImage"
 
+          # Standalone data-wipe helper — for AppImage users (no package manager)
+          # and for a complete wipe that also clears the GNOME shortcut/autostart.
+          install -m 755 scripts/uninstall.sh "dist-artifacts/linux-clipboard-uninstall.sh"
+
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           ls -lh dist-artifacts
 
@@ -81,25 +85,19 @@ jobs:
           cat > RELEASE_NOTES.md <<'EOF'
           ## Linux Clipboard @@VERSION@@
 
-          Trình quản lý lịch sử clipboard kiểu Windows 10 cho Linux (Ubuntu/GNOME).
-          Bản build cho **x86_64 / amd64**.
+          A Windows 10-style clipboard history manager for Linux (Ubuntu/GNOME).
+          Build for **x86_64 / amd64**.
 
-          ### 📦 Cài đặt bằng `.deb` (Ubuntu/Debian)
+          ### 📦 Install via `.deb` (Ubuntu/Debian)
 
           ```bash
           curl -L -o linux-clipboard.deb \
             https://github.com/@@REPO@@/releases/download/@@TAG@@/linux-clipboard_@@VERSION@@_amd64.deb
           sudo dpkg -i linux-clipboard.deb
-          sudo apt-get install -f   # cài các dependency còn thiếu (libxdo3, ...)
+          sudo apt-get install -f   # pull in any missing dependencies (libxdo3, ...)
           ```
 
-          Gỡ cài đặt:
-
-          ```bash
-          sudo dpkg -r linux-clipboard
-          ```
-
-          ### 📥 AppImage (chạy trực tiếp, không cần cài)
+          ### 📥 AppImage (run directly, no install)
 
           ```bash
           curl -L -o linux-clipboard.AppImage \
@@ -107,6 +105,25 @@ jobs:
           chmod +x linux-clipboard.AppImage
           ./linux-clipboard.AppImage
           ```
+
+          ### 🗑️ Uninstall (fully remove data)
+
+          **`.deb`** — `purge` removes the app together with all its data (history, images, settings) for every user:
+
+          ```bash
+          sudo apt purge linux-clipboard      # or: sudo dpkg -P linux-clipboard
+          ```
+
+          **AppImage**, or to wipe *every last trace* (including the GNOME shortcut and the
+          run-on-login entry — things the root-run `apt purge` cannot touch):
+
+          ```bash
+          curl -L -o linux-clipboard-uninstall.sh \
+            https://github.com/@@REPO@@/releases/download/@@TAG@@/linux-clipboard-uninstall.sh
+          bash linux-clipboard-uninstall.sh          # add --remove-package to also remove the .deb
+          ```
+
+          > The `.deb` also installs a `linux-clipboard-uninstall` command (run it as your normal user).
           EOF
           sed -i "s|@@VERSION@@|${VERSION}|g; s|@@TAG@@|${TAG}|g; s|@@REPO@@|${REPO}|g" RELEASE_NOTES.md
           echo "----- RELEASE_NOTES.md -----"
@@ -121,3 +138,4 @@ jobs:
           files: |
             dist-artifacts/linux-clipboard_${{ steps.pkg.outputs.version }}_amd64.deb
             dist-artifacts/linux-clipboard_${{ steps.pkg.outputs.version }}_amd64.AppImage
+            dist-artifacts/linux-clipboard-uninstall.sh
