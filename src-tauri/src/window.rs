@@ -2,7 +2,7 @@
 //! cursor-relative positioning (X11) with a centered fallback (Wayland).
 
 use crate::state::AppState;
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewWindow};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, WebviewWindow};
 
 pub fn get_panel(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window("main")
@@ -43,6 +43,10 @@ fn show(app: &AppHandle, win: &WebviewWindow) {
 fn position(app: &AppHandle, win: &WebviewWindow) {
     let state = app.state::<AppState>();
     let settings = state.settings();
+
+    // Wayland panels read a touch narrower than the X11 default width.
+    let width = if state.session.kind == "wayland" { 420.0 } else { 460.0 };
+    let _ = win.set_size(LogicalSize::new(width, 520.0));
 
     // Wayland (or forced center): let the compositor place it.
     if settings.position_mode != "cursor" || state.session.kind != "x11" {

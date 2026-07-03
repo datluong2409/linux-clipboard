@@ -101,7 +101,7 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
     <div className="flex h-full flex-col">
       <div
         data-tauri-drag-region
-        className="flex items-center gap-2 border-b border-black/5 px-3 py-2.5 dark:border-white/10"
+        className="flex items-center gap-2 border-b border-black/5 px-4 py-3 dark:border-white/10"
       >
         <div className="flex-1">
           <SearchBar ref={searchRef} value={query} onChange={setQuery} />
@@ -127,13 +127,13 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
         </button>
       </div>
 
-      <div className="scroll-thin flex-1 overflow-y-auto p-2.5">
+      <div className="scroll-thin flex-1 overflow-y-auto p-4">
         {items.length === 0 ? (
           <EmptyState query={query} />
         ) : (
           <div className="flex flex-col gap-3">
             {pinned.length > 0 && (
-              <section className="flex flex-col gap-1.5">
+              <section className="flex flex-col gap-2">
                 <h2 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
                   Đã ghim
                 </h2>
@@ -141,7 +141,7 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
               </section>
             )}
             {rest.length > 0 && (
-              <section className="flex flex-col gap-1.5">
+              <section className="flex flex-col gap-2">
                 {!query && (
                   <h2 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
                     Gần đây

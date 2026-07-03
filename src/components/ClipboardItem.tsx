@@ -21,7 +21,7 @@ export function ClipboardItem({
     <div
       onClick={onPaste}
       className={[
-        "group relative cursor-pointer rounded-lg border p-2.5 transition",
+        "group relative flex h-24 cursor-pointer items-center overflow-hidden rounded-lg border p-3 transition",
         selected
           ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)]/50 ring-1 ring-[var(--color-accent)]"
           : "border-black/5 bg-white hover:border-black/10 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/10",
@@ -31,10 +31,10 @@ export function ClipboardItem({
         <img
           src={assetUrl(clip.thumbPath)}
           alt="clipboard"
-          className="max-h-28 w-auto rounded object-contain"
+          className="mx-auto max-h-full max-w-full rounded object-contain"
         />
       ) : (
-        <p className="clip-preview line-clamp-4 whitespace-pre-wrap text-sm text-neutral-800 dark:text-neutral-100">
+        <p className="clip-preview line-clamp-3 w-full self-start whitespace-pre-wrap text-sm text-neutral-800 dark:text-neutral-100">
           {clip.content}
         </p>
       )}
