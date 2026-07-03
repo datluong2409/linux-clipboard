@@ -99,6 +99,69 @@ pub fn enable(cell: &PortalCell) -> bool {
     get_or_build(cell).is_some()
 }
 
+/// User-facing message when no RemoteDesktop portal backend is installed. Names
+/// the packages so the user can fix it.
+pub const PORTAL_MISSING_MSG: &str = "Máy này chưa có portal RemoteDesktop nên không thể tự động dán trên Wayland.\n\n\
+Hãy cài gói tương ứng với desktop của bạn:\n  \
+• GNOME: xdg-desktop-portal-gnome\n  \
+• KDE:   xdg-desktop-portal-kde\n\n\
+Ví dụ trên Ubuntu/Debian:\n  \
+sudo apt install xdg-desktop-portal-gnome\n\n\
+Nội dung vẫn được copy — bạn có thể tự dán bằng Ctrl+V.";
+
+/// True if an installed xdg-desktop-portal backend declares the RemoteDesktop
+/// impl interface (i.e. xdg-desktop-portal-gnome / -kde or equivalent is
+/// present). Scans the standard `.portal` files under `$XDG_DATA_DIRS` for
+/// `org.freedesktop.impl.portal.RemoteDesktop`. Cheap, synchronous, and cached
+/// for the process (portal packages don't come and go at runtime), so it can
+/// gate a warning before we ever touch D-Bus.
+pub fn remote_desktop_available() -> bool {
+    static AVAILABLE: OnceLock<bool> = OnceLock::new();
+    *AVAILABLE.get_or_init(scan_remote_desktop_portal)
+}
+
+fn scan_remote_desktop_portal() -> bool {
+    const NEEDLE: &str = "org.freedesktop.impl.portal.RemoteDesktop";
+    for base in portal_data_dirs() {
+        let dir = base.join("xdg-desktop-portal").join("portals");
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("portal") {
+                continue;
+            }
+            if std::fs::read_to_string(&path)
+                .map(|c| c.contains(NEEDLE))
+                .unwrap_or(false)
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn portal_data_dirs() -> Vec<PathBuf> {
+    let raw = std::env::var("XDG_DATA_DIRS")
+        .unwrap_or_else(|_| "/usr/local/share:/usr/share".to_string());
+    let mut dirs: Vec<PathBuf> = raw
+        .split(':')
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
+        .collect();
+    // Belt-and-suspenders: backend .portal files live under /usr/share even if
+    // XDG_DATA_DIRS is trimmed (e.g. in a stripped service environment).
+    for extra in ["/usr/share", "/usr/local/share"] {
+        let p = PathBuf::from(extra);
+        if !dirs.contains(&p) {
+            dirs.push(p);
+        }
+    }
+    dirs
+}
+
 /// Return the cached paster, building (and caching) it on first use.
 fn get_or_build(cell: &PortalCell) -> Option<Arc<PortalPaster>> {
     // Fast path: already built.

@@ -135,6 +135,17 @@ pub fn paste_item(app: AppHandle, state: State<'_, AppState>, id: i64) -> OpResu
 /// a safe copy-only fallback.
 fn prompt_enable_paste(app: AppHandle) {
     std::thread::spawn(move || {
+        // No RemoteDesktop portal backend installed → auto-paste is impossible;
+        // warn with install instructions instead of offering to enable.
+        if !crate::portal::remote_desktop_available() {
+            let _ = app
+                .dialog()
+                .message(crate::portal::PORTAL_MISSING_MSG)
+                .title("Thiếu xdg-desktop-portal")
+                .blocking_show();
+            return;
+        }
+
         let enable = app
             .dialog()
             .message(

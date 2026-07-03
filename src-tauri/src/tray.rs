@@ -12,6 +12,7 @@ use crate::window;
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, Wry};
+use tauri_plugin_dialog::DialogExt;
 
 const TRAY_ID: &str = "main-tray";
 
@@ -61,6 +62,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let state = app.state::<AppState>();
     if state.session.can_auto_paste {
         let label = match paste_state(&state) {
+            PasteState::PortalMissing => "Auto-paste: thiếu portal ⚠",
             PasteState::NeedsPermission => "Auto-paste: cần cấp quyền ⚠",
             PasteState::On => "Auto-paste: Bật ✓",
             PasteState::Off => "Auto-paste: Tắt",
@@ -79,14 +81,22 @@ enum PasteState {
     Off,
     /// Setting on but the Wayland portal permission hasn't been granted yet.
     NeedsPermission,
+    /// Setting on but no RemoteDesktop portal backend is installed
+    /// (xdg-desktop-portal-gnome / -kde missing).
+    PortalMissing,
 }
 
 fn paste_state(state: &AppState) -> PasteState {
     if !state.settings().auto_paste {
         return PasteState::Off;
     }
-    let needs_portal = state.session.auto_paste_backend == "portal";
-    if needs_portal && !crate::portal::is_granted(&state.paste_backend) {
+    if state.session.auto_paste_backend != "portal" {
+        return PasteState::On; // X11 (enigo): nothing to grant
+    }
+    if !crate::portal::remote_desktop_available() {
+        return PasteState::PortalMissing;
+    }
+    if !crate::portal::is_granted(&state.paste_backend) {
         PasteState::NeedsPermission
     } else {
         PasteState::On
@@ -99,6 +109,7 @@ fn paste_state(state: &AppState) -> PasteState {
 /// - `Off` → turn the setting on (+ grant now on Wayland).
 fn on_toggle_paste(app: &AppHandle) {
     match paste_state(&app.state::<AppState>()) {
+        PasteState::PortalMissing => warn_portal_missing(app),
         PasteState::NeedsPermission => grant_async(app),
         PasteState::On => {
             persist_auto_paste(app, false);
@@ -106,18 +117,32 @@ fn on_toggle_paste(app: &AppHandle) {
         }
         PasteState::Off => {
             persist_auto_paste(app, true);
-            // First enable on Wayland: grant now (shows the dialog) instead of
-            // waiting for the first paste. grant_async refreshes when done.
-            let state = app.state::<AppState>();
-            let needs_grant = state.session.auto_paste_backend == "portal"
-                && !crate::portal::is_granted(&state.paste_backend);
-            if needs_grant {
-                grant_async(app);
-            } else {
-                refresh(app);
+            // Re-evaluate now that it's on and act on the resulting state:
+            // grant now on Wayland (dialog), warn if the portal is missing, or
+            // just refresh.
+            match paste_state(&app.state::<AppState>()) {
+                PasteState::PortalMissing => {
+                    refresh(app);
+                    warn_portal_missing(app);
+                }
+                PasteState::NeedsPermission => grant_async(app),
+                _ => refresh(app),
             }
         }
     }
+}
+
+/// Warn (native dialog) that no RemoteDesktop portal backend is installed. Off
+/// the main thread since `blocking_show` blocks.
+fn warn_portal_missing(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let _ = app
+            .dialog()
+            .message(crate::portal::PORTAL_MISSING_MSG)
+            .title("Thiếu xdg-desktop-portal")
+            .blocking_show();
+    });
 }
 
 /// Write `Settings.auto_paste`, persist to disk, and notify the frontend —
