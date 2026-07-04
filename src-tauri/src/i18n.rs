@@ -65,6 +65,16 @@ impl Lang {
 
     // --- Native dialogs ---
 
+    /// Product name shown as the title of every native dialog. rfd's GTK
+    /// backend renders the dialog title in *two* places — the window title bar
+    /// and the bold primary text — so we give it the app identity and put the
+    /// actual status in `.message()`; passing a status string as the title
+    /// instead makes that status appear twice. Not localized (proper noun,
+    /// matches `productName` in tauri.conf.json).
+    pub fn app_title(self) -> &'static str {
+        "Linux Clipboard"
+    }
+
     pub fn portal_missing_title(self) -> &'static str {
         self.pick("xdg-desktop-portal missing", "Thiếu xdg-desktop-portal")
     }

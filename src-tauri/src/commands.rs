@@ -151,16 +151,16 @@ fn prompt_enable_paste(app: AppHandle) {
         if !crate::portal::remote_desktop_available() {
             let _ = app
                 .dialog()
-                .message(tr.portal_missing_body())
-                .title(tr.portal_missing_title())
+                .message(format!("{}\n\n{}", tr.portal_missing_title(), tr.portal_missing_body()))
+                .title(tr.app_title())
                 .blocking_show();
             return;
         }
 
         let enable = app
             .dialog()
-            .message(tr.enable_paste_body())
-            .title(tr.enable_paste_title())
+            .message(format!("{}\n\n{}", tr.enable_paste_title(), tr.enable_paste_body()))
+            .title(tr.app_title())
             .buttons(MessageDialogButtons::OkCancelCustom(
                 tr.enable_paste_now().into(),
                 tr.enable_paste_later().into(),
@@ -175,8 +175,8 @@ fn prompt_enable_paste(app: AppHandle) {
         } else {
             let _ = app
                 .dialog()
-                .message(tr.copied_body())
-                .title(tr.copied_title())
+                .message(format!("{}\n\n{}", tr.copied_title(), tr.copied_body()))
+                .title(tr.app_title())
                 .blocking_show();
         }
     });

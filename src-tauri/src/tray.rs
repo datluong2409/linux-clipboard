@@ -141,8 +141,8 @@ fn on_check_updates(app: &AppHandle) {
         if result.error.is_some() {
             let _ = app
                 .dialog()
-                .message(tr.update_error_body())
-                .title(tr.update_error_title())
+                .message(format!("{}\n\n{}", tr.update_error_title(), tr.update_error_body()))
+                .title(tr.app_title())
                 .blocking_show();
             return;
         }
@@ -151,8 +151,12 @@ fn on_check_updates(app: &AppHandle) {
             let latest = result.latest_version.as_deref().unwrap_or("");
             let open = app
                 .dialog()
-                .message(tr.update_available_body(latest, &result.current_version))
-                .title(tr.update_available_title())
+                .message(format!(
+                    "{}\n\n{}",
+                    tr.update_available_title(),
+                    tr.update_available_body(latest, &result.current_version)
+                ))
+                .title(tr.app_title())
                 .buttons(MessageDialogButtons::OkCancelCustom(
                     tr.update_open().into(),
                     tr.update_later().into(),
@@ -167,8 +171,12 @@ fn on_check_updates(app: &AppHandle) {
         } else {
             let _ = app
                 .dialog()
-                .message(tr.update_up_to_date_body(&result.current_version))
-                .title(tr.update_up_to_date_title())
+                .message(format!(
+                    "{}\n\n{}",
+                    tr.update_up_to_date_title(),
+                    tr.update_up_to_date_body(&result.current_version)
+                ))
+                .title(tr.app_title())
                 .blocking_show();
         }
     });
@@ -215,8 +223,8 @@ fn warn_portal_missing(app: &AppHandle) {
         let tr = app.state::<AppState>().lang();
         let _ = app
             .dialog()
-            .message(tr.portal_missing_body())
-            .title(tr.portal_missing_title())
+            .message(format!("{}\n\n{}", tr.portal_missing_title(), tr.portal_missing_body()))
+            .title(tr.app_title())
             .blocking_show();
     });
 }
