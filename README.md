@@ -10,6 +10,10 @@ with **Tauri v2 + React + TypeScript + Tailwind** (frontend) and **Rust**
 and pops up a Win+V-style panel on a hotkey so you can pick an item and paste it.
 
 ## Features
+<p align="center">
+  <img src="demo.png" alt="Linux Clipboard logo" width="300" />
+</p>
+
 
 - Background clipboard monitor (text + images), most-recent-first, de-duplicated
 - Frameless popup panel, shown near the cursor (X11) or centered (Wayland)
