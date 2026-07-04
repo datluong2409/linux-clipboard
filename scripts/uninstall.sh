@@ -12,6 +12,9 @@
 #   * GNOME toggle keyboard shortcut      (gsettings custom-keybinding slot)
 #   * run-on-login entry                  (~/.config/autostart/*.desktop)
 #
+# Any running instance is stopped first, so the live app can't re-save data as
+# it is wiped.
+#
 # It works for both install methods:
 #   * .deb     — pass --remove-package to also purge the package via apt/dpkg.
 #   * AppImage — cleans the per-user data; delete the .AppImage file yourself.
@@ -34,6 +37,7 @@ set -euo pipefail
 APP_ID="com.datluong.linuxclipboard"   # Tauri identifier → data/config/cache dir name
 STATE_NAME="linux-clipboard"           # $XDG_STATE_HOME/<STATE_NAME>/portal.token
 DEB_PACKAGE="linux-clipboard"          # dpkg package name
+BIN_NAME="linux-clipboard"             # /usr/bin/<BIN_NAME>; process name for pkill
 GNOME_SLOT="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/linux-clipboard/"
 GNOME_SCHEMA="org.gnome.settings-daemon.plugins.media-keys"
 GNOME_KB_SCHEMA="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding"
@@ -111,6 +115,26 @@ if [ "$ASSUME_YES" -ne 1 ] && [ "$DRY_RUN" -ne 1 ]; then
     [yY]|[yY][eE][sS]) ;;
     *) note "Aborted."; exit 0 ;;
   esac
+fi
+
+# --- 0. Stop the running app (this user's) so it can't rewrite what we wipe --
+# A live instance holds history in memory and re-saves settings/DB on exit, so
+# it would undo the wipe below; stop it first. Runs as the invoking user, so it
+# only touches this user's instance (the .deb's root-run prerm covers all users).
+if command -v pkill >/dev/null 2>&1 && pgrep -x "$BIN_NAME" >/dev/null 2>&1; then
+  note "Stopping running Linux Clipboard…"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    note "  [dry-run] pkill -x $BIN_NAME"
+  else
+    pkill -TERM -x "$BIN_NAME" 2>/dev/null || true
+    i=0
+    while [ "$i" -lt 10 ] && pgrep -x "$BIN_NAME" >/dev/null 2>&1; do
+      sleep 0.2
+      i=$((i + 1))
+    done
+    pkill -KILL -x "$BIN_NAME" 2>/dev/null || true
+    note "  stopped"
+  fi
 fi
 
 # --- 1. Files: DB, images, WebView cache, settings, portal token ------------

@@ -53,6 +53,7 @@
     "linux": {
       "deb": {
         "depends": ["libxdo3"],
+        "preRemoveScript": "../scripts/deb-prerm.sh",
         "postRemoveScript": "../scripts/deb-postrm.sh",
         "files": {
           "/usr/bin/linux-clipboard-uninstall": "../scripts/uninstall.sh"
