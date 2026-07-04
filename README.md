@@ -32,14 +32,13 @@ WebKit development headers and a few tools. On Ubuntu:
 sudo apt update && sudo apt install -y \
   libwebkit2gtk-4.1-dev build-essential curl wget file \
   libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
-  pkg-config patchelf
+  pkg-config
 ```
 
 - `libwebkit2gtk-4.1-dev` + `build-essential` — required to compile a Tauri app
 - `libxdo-dev` — required by `enigo` for X11 auto-paste (Ctrl+V simulation)
 - `libayatana-appindicator3-dev` — the system tray icon (needs the GNOME
   *AppIndicator* extension to actually show on GNOME)
-- `patchelf` — AppImage packaging
 - `libxkbcommon-dev` — Wayland auto-paste (keysym→keycode via the compositor keymap)
 
 Wayland auto-paste needs no extra tool: it goes through the XDG **RemoteDesktop
@@ -52,7 +51,7 @@ control your computer?" consent dialog; it's silent thereafter.
 ```bash
 npm install            # frontend deps
 npm run tauri dev      # run the app (hot-reload frontend)
-npm run tauri build    # produce .deb / AppImage in src-tauri/target/release/bundle
+npm run tauri build    # produce .deb in src-tauri/target/release/bundle
 ```
 
 ## How it works

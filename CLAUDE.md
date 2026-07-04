@@ -15,14 +15,14 @@ A Windows-10-style clipboard history manager for Linux (Ubuntu/GNOME): **Tauri v
 ```bash
 npm install            # install frontend deps
 npm run dev:app         # run the app in dev mode (hot-reload frontend); sets software-GL env vars for compatibility
-npm run build:app       # produce .deb / AppImage via `fakeroot tauri build` (src-tauri/target/release/bundle)
+npm run build:app       # produce .deb via `fakeroot tauri build` (src-tauri/target/release/bundle)
 npm run dev             # vite only (frontend, no Tauri shell)
 npm run build           # tsc + vite build (frontend only)
 ```
 
 There is no configured lint or test suite (no eslint config, no test runner/files in `src` or `src-tauri`). Type-check the frontend with `tsc` (via `npm run build`); check the backend with `cargo check` / `cargo build` from `src-tauri/`.
 
-System build deps (Ubuntu) are listed in [README.md](README.md) — WebKitGTK, `libxdo-dev` (enigo/X11), `libxkbcommon-dev` (Wayland portal paste), `libayatana-appindicator3-dev` (tray), `patchelf` (AppImage). Wayland auto-paste uses the XDG RemoteDesktop portal (`xdg-desktop-portal-gnome`/`-kde`, shipped by default) — no ydotool/uinput.
+System build deps (Ubuntu) are listed in [README.md](README.md) — WebKitGTK, `libxdo-dev` (enigo/X11), `libxkbcommon-dev` (Wayland portal paste), `libayatana-appindicator3-dev` (tray). Wayland auto-paste uses the XDG RemoteDesktop portal (`xdg-desktop-portal-gnome`/`-kde`, shipped by default) — no ydotool/uinput.
 
 ## Architecture
 

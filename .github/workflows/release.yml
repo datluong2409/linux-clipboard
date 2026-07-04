@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build-release:
-    # Build on 22.04 (older glibc/webkit) so the .deb/AppImage run on more distros.
+    # Build on 22.04 (older glibc/webkit) so the .deb runs on more distros.
     runs-on: ubuntu-22.04
     timeout-minutes: 60
 
@@ -42,13 +42,13 @@ jobs:
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
-            libxkbcommon-dev pkg-config patchelf fakeroot
+            libxkbcommon-dev pkg-config fakeroot
 
       - name: Install frontend dependencies
         run: npm install
 
       # Runs the project's own build (fakeroot tauri build -> tsc + vite + cargo).
-      # Produces .deb and .AppImage under src-tauri/target/release/bundle/.
+      # Produces the .deb under src-tauri/target/release/bundle/.
       - name: Build app
         run: npm run build:app
 
@@ -62,13 +62,11 @@ jobs:
           mkdir -p dist-artifacts
 
           DEB=$(find src-tauri/target/release/bundle/deb -name '*.deb' | head -n1)
-          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -n1)
 
-          cp "$DEB"      "dist-artifacts/linux-clipboard_${VERSION}_amd64.deb"
-          cp "$APPIMAGE" "dist-artifacts/linux-clipboard_${VERSION}_amd64.AppImage"
+          cp "$DEB" "dist-artifacts/linux-clipboard_${VERSION}_amd64.deb"
 
-          # Standalone data-wipe helper — for AppImage users (no package manager)
-          # and for a complete wipe that also clears the GNOME shortcut/autostart.
+          # Standalone data-wipe helper — for a complete wipe that also clears
+          # the GNOME shortcut/autostart (things the root-run apt purge can't touch).
           install -m 755 scripts/uninstall.sh "dist-artifacts/linux-clipboard-uninstall.sh"
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -97,15 +95,6 @@ jobs:
           sudo apt-get install -f   # pull in any missing dependencies (libxdo3, ...)
           ```
 
-          ### 📥 AppImage (run directly, no install)
-
-          ```bash
-          curl -L -o linux-clipboard.AppImage \
-            https://github.com/@@REPO@@/releases/download/@@TAG@@/linux-clipboard_@@VERSION@@_amd64.AppImage
-          chmod +x linux-clipboard.AppImage
-          ./linux-clipboard.AppImage
-          ```
-
           ### 🗑️ Uninstall (fully remove data)
 
           **`.deb`** — `purge` removes the app together with all its data (history, images, settings) for every user:
@@ -114,7 +103,7 @@ jobs:
           sudo apt purge linux-clipboard      # or: sudo dpkg -P linux-clipboard
           ```
 
-          **AppImage**, or to wipe *every last trace* (including the GNOME shortcut and the
+          To wipe *every last trace* (including the GNOME shortcut and the
           run-on-login entry — things the root-run `apt purge` cannot touch):
 
           ```bash
@@ -137,5 +126,4 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist-artifacts/linux-clipboard_${{ steps.pkg.outputs.version }}_amd64.deb
-            dist-artifacts/linux-clipboard_${{ steps.pkg.outputs.version }}_amd64.AppImage
             dist-artifacts/linux-clipboard-uninstall.sh

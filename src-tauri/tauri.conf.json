@@ -39,7 +39,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage"],
+    "targets": ["deb"],
     "category": "Utility",
     "shortDescription": "Clipboard history manager",
     "longDescription": "A Windows-10 style clipboard history manager for Linux (text + images, pinned snippets, global hotkey, auto-paste).",
