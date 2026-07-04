@@ -304,6 +304,26 @@ export function SettingsView({
           </section>
         )}
 
+        {/* History cap */}
+        <section className="mb-4">
+          <label className="flex items-center justify-between gap-3 py-1">
+            <span className="text-sm text-neutral-800 dark:text-neutral-100">
+              {t("maxItems")}
+            </span>
+            <input
+              type="number"
+              min={5}
+              max={500}
+              value={settings.historyCap}
+              onChange={(e) => {
+                const n = Math.max(5, Math.min(500, Number(e.target.value) || 25));
+                onSave({ ...settings, historyCap: n });
+              }}
+              className="w-20 rounded-md border border-black/10 bg-white/60 px-2 py-1 text-right text-sm outline-none dark:border-white/10 dark:bg-white/10"
+            />
+          </label>
+        </section>
+
         {/* Language */}
         <section className="mb-4">
           <label className="flex items-center justify-between gap-3 py-1">
@@ -323,26 +343,6 @@ export function SettingsView({
                 </option>
               ))}
             </select>
-          </label>
-        </section>
-
-        {/* History cap */}
-        <section className="mb-4">
-          <label className="flex items-center justify-between gap-3 py-1">
-            <span className="text-sm text-neutral-800 dark:text-neutral-100">
-              {t("maxItems")}
-            </span>
-            <input
-              type="number"
-              min={5}
-              max={500}
-              value={settings.historyCap}
-              onChange={(e) => {
-                const n = Math.max(5, Math.min(500, Number(e.target.value) || 25));
-                onSave({ ...settings, historyCap: n });
-              }}
-              className="w-20 rounded-md border border-black/10 bg-white/60 px-2 py-1 text-right text-sm outline-none dark:border-white/10 dark:bg-white/10"
-            />
           </label>
         </section>
 
