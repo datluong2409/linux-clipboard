@@ -42,6 +42,9 @@ export const saveSettings = (settings: Settings) =>
 export const setHotkey = (accel: string) =>
   invoke<OpResult>("set_hotkey", { accel });
 
+/** The exact `<app> --toggle` command to bind manually where there's no automatic hotkey backend. */
+export const getToggleCommand = () => invoke<string>("get_toggle_command");
+
 export const getSessionInfo = () => invoke<SessionInfo>("get_session_info");
 
 /** Turn auto-paste on/off, running the same grant/warn logic as the tray. */

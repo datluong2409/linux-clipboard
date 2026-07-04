@@ -35,9 +35,13 @@ const en = {
   pressCombo: "Press a key combo… (Esc to cancel)",
   hotkeyGnomeSync:
     "Automatically synced with the GNOME system shortcut (applies immediately, even on Wayland).",
-  hotkeyNoneBefore:
-    "This environment (Wayland outside GNOME) can't let the app register a global hotkey. The hotkey is still saved — create a shortcut in your desktop's keyboard settings that runs ",
-  hotkeyNoneAfter: ".",
+  hotkeyNoneExplain:
+    "This environment (Wayland outside GNOME) can't let the app register a global hotkey. The hotkey is still saved, but to open the panel from the keyboard, bind this command to a shortcut in your desktop's keyboard settings:",
+  hotkeyNoneHowto:
+    "For example — KDE: System Settings › Shortcuts (add a custom shortcut). Hyprland / Sway: add a bind line to your config.",
+  copy: "Copy",
+  copied: "Command copied",
+  copyFailed: "Couldn't copy — select and copy it manually",
 
   // Settings — auto-paste
   autoPasteLabel: "Auto-paste",
@@ -105,9 +109,13 @@ const vi: Record<TKey, string> = {
   pressCombo: "Nhấn tổ hợp phím… (Esc để huỷ)",
   hotkeyGnomeSync:
     "Tự động đồng bộ với shortcut hệ thống GNOME (áp dụng ngay, kể cả trên Wayland).",
-  hotkeyNoneBefore:
-    "Môi trường này (Wayland ngoài GNOME) không cho app tự đăng ký phím tắt. Phím tắt vẫn được lưu — hãy tạo shortcut trong cài đặt bàn phím của desktop, chạy lệnh ",
-  hotkeyNoneAfter: ".",
+  hotkeyNoneExplain:
+    "Môi trường này (Wayland ngoài GNOME) không cho app tự đăng ký phím tắt. Phím tắt vẫn được lưu, nhưng để mở bảng bằng bàn phím, hãy gán lệnh sau vào một shortcut trong cài đặt bàn phím của desktop:",
+  hotkeyNoneHowto:
+    "Ví dụ — KDE: System Settings › Shortcuts (thêm shortcut tuỳ chỉnh). Hyprland / Sway: thêm dòng bind vào file cấu hình.",
+  copy: "Sao chép",
+  copied: "Đã sao chép lệnh",
+  copyFailed: "Không sao chép được — hãy tự bôi đen và copy",
 
   autoPasteLabel: "Tự động dán (auto-paste)",
   autoPasteHint: "Dán thẳng vào app đang mở khi chọn 1 mục",

@@ -102,6 +102,7 @@ pub fn run() {
             commands::set_settings,
             commands::set_hotkey,
             commands::get_session_info,
+            commands::get_toggle_command,
             commands::set_auto_paste,
             commands::get_paste_state,
             commands::get_version,

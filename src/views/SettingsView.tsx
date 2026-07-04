@@ -10,6 +10,7 @@ import {
   checkForUpdates,
   clearHistory,
   getPasteState,
+  getToggleCommand,
   getVersion,
   onEvent,
   openReleasePage,
@@ -87,6 +88,8 @@ export function SettingsView({
   const [version, setVersion] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [updateResult, setUpdateResult] = useState<UpdateCheck | null>(null);
+  // The manual `<app> --toggle` command shown when no auto hotkey backend exists.
+  const [toggleCmd, setToggleCmd] = useState<string | null>(null);
 
   // Current app version for the Updates section (cheap backend call, no network).
   useEffect(() => {
@@ -130,6 +133,23 @@ export function SettingsView({
     },
     [settings, onLocal, onToast, t],
   );
+
+  // Fetch the exact `<app> --toggle` command to show for manual binding on
+  // sessions with no automatic hotkey backend (e.g. non-GNOME Wayland).
+  useEffect(() => {
+    if (sessionInfo?.hotkeyBackend !== "none") return;
+    void getToggleCommand().then(setToggleCmd);
+  }, [sessionInfo?.hotkeyBackend]);
+
+  const copyToggleCommand = useCallback(async () => {
+    if (!toggleCmd) return;
+    try {
+      await navigator.clipboard.writeText(toggleCmd);
+      onToast(t("copied"));
+    } catch {
+      onToast(t("copyFailed"));
+    }
+  }, [toggleCmd, onToast, t]);
 
   // Capture a key combo while recording.
   useEffect(() => {
@@ -218,13 +238,27 @@ export function SettingsView({
             </p>
           )}
           {hotkeyBackend === "none" && (
-            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-              {t("hotkeyNoneBefore")}
-              <code className="rounded bg-black/10 px-1 dark:bg-white/10">
-                linux-clipboard --toggle
-              </code>
-              {t("hotkeyNoneAfter")}
-            </p>
+            <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                {t("hotkeyNoneExplain")}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="scroll-thin flex-1 overflow-x-auto whitespace-nowrap rounded bg-black/10 px-2 py-1 font-mono text-xs text-neutral-800 dark:bg-white/10 dark:text-neutral-100">
+                  {toggleCmd ?? "linux-clipboard --toggle"}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => void copyToggleCommand()}
+                  disabled={!toggleCmd}
+                  className="shrink-0 rounded-md bg-[var(--color-accent)] px-2.5 py-1 text-xs font-medium text-white disabled:opacity-60"
+                >
+                  {t("copy")}
+                </button>
+              </div>
+              <p className="mt-1.5 text-xs text-amber-700/80 dark:text-amber-300/80">
+                {t("hotkeyNoneHowto")}
+              </p>
+            </div>
           )}
         </section>
 

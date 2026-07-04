@@ -306,6 +306,16 @@ fn gnome_toggle_command() -> Result<String, String> {
     Ok(format!("{exe} --toggle"))
 }
 
+/// The exact `<app> --toggle` command a user should bind to a key in their
+/// desktop's own keyboard settings. Surfaced by the Settings UI on sessions
+/// with no automatic hotkey backend (e.g. non-GNOME Wayland) so it can be shown
+/// and copied. Falls back to the bare binary name if the exe path can't be
+/// resolved, so the UI always has something to display.
+#[tauri::command]
+pub fn get_toggle_command() -> String {
+    gnome_toggle_command().unwrap_or_else(|_| "linux-clipboard --toggle".into())
+}
+
 /// Bind `accel` using whichever hotkey backend this session supports. Callers
 /// own persisting the accelerator into settings.
 fn apply_hotkey(app: &AppHandle, backend: &str, accel: &str) -> Result<(), String> {
