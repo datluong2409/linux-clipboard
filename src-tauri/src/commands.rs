@@ -64,7 +64,16 @@ pub fn clear_history(app: AppHandle, state: State<'_, AppState>, keep_pinned: bo
 pub fn paste_item(app: AppHandle, state: State<'_, AppState>, id: i64) -> OpResult {
     let st = state.inner();
     let clip = match st.db.lock() {
-        Ok(conn) => db::get(&conn, id),
+        Ok(conn) => {
+            let clip = db::get(&conn, id);
+            // Picking an item counts as re-using it: bump it to the top of the
+            // list (like re-copying existing content does). The paste-back write
+            // below is suppressed from the monitor, so it wouldn't bump on its own.
+            if clip.is_some() {
+                db::bump_used(&conn, id);
+            }
+            clip
+        }
         Err(_) => return OpResult::err("db_lock"),
     };
     let Some(clip) = clip else {
