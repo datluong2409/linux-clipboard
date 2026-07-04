@@ -108,6 +108,7 @@ pub fn run() {
             commands::get_version,
             commands::check_for_updates,
             commands::open_release_page,
+            commands::open_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

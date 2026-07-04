@@ -66,9 +66,8 @@ const en = {
   language: "Language",
   maxItems: "Max items",
 
-  // Settings — danger zone
-  clearAllHistory: "Clear all history (including pinned)",
-  clearedAllHistory: "Cleared all history",
+  // Settings — author (shown in the Updates section)
+  author: "Author",
 
   // Settings — session info
   displaySession: "Display session",
@@ -137,8 +136,7 @@ const vi: Record<TKey, string> = {
   language: "Ngôn ngữ",
   maxItems: "Số mục tối đa",
 
-  clearAllHistory: "Xoá toàn bộ lịch sử (kể cả mục đã ghim)",
-  clearedAllHistory: "Đã xoá toàn bộ lịch sử",
+  author: "Tác giả",
 
   displaySession: "Phiên hiển thị",
   hotkeyMechanism: "Cơ chế phím tắt",

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { IconBack } from "../components/Icons";
+import { IconBack, IconGithub } from "../components/Icons";
 import {
   eventToAccelerator,
   isValidAccelerator,
@@ -8,16 +8,20 @@ import {
 import { LANGUAGES, useI18n, type Lang } from "../lib/i18n";
 import {
   checkForUpdates,
-  clearHistory,
   getPasteState,
   getToggleCommand,
   getVersion,
   onEvent,
   openReleasePage,
+  openUrl,
   setAutoPaste,
   setHotkey,
 } from "../lib/ipc";
 import type { PasteState, SessionInfo, Settings, UpdateCheck } from "../types";
+
+/** Project author — linked from the About section. */
+const AUTHOR = "datluong2409";
+const AUTHOR_URL = `https://github.com/${AUTHOR}`;
 
 interface Props {
   settings: Settings | null;
@@ -342,11 +346,25 @@ export function SettingsView({
           </label>
         </section>
 
-        {/* Updates */}
+        {/* Updates (with author) */}
         <section className="mb-4">
           <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
             {t("updates")}
           </h2>
+          <div className="flex items-center justify-between gap-3 py-1">
+            <span className="text-sm text-neutral-800 dark:text-neutral-100">
+              {t("author")}
+            </span>
+            <button
+              type="button"
+              onClick={() => void openUrl(AUTHOR_URL)}
+              title={AUTHOR_URL}
+              className="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-[var(--color-accent)] hover:underline"
+            >
+              <IconGithub className="h-4 w-4" />
+              @{AUTHOR}
+            </button>
+          </div>
           <div className="flex items-center justify-between gap-3 py-1">
             <span className="text-sm text-neutral-800 dark:text-neutral-100">
               {t("currentVersion")}
@@ -387,20 +405,6 @@ export function SettingsView({
               </p>
             )
           )}
-        </section>
-
-        {/* Danger zone */}
-        <section className="mb-4">
-          <button
-            type="button"
-            onClick={async () => {
-              await clearHistory(false);
-              onToast(t("clearedAllHistory"));
-            }}
-            className="w-full rounded-md border border-red-500/30 px-3 py-2 text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400"
-          >
-            {t("clearAllHistory")}
-          </button>
         </section>
 
         {/* Session info */}

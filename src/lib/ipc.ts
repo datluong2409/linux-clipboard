@@ -63,6 +63,9 @@ export const checkForUpdates = () => invoke<UpdateCheck>("check_for_updates");
 export const openReleasePage = (url?: string | null) =>
   invoke("open_release_page", { url: url ?? null });
 
+/** Open an arbitrary URL (e.g. the author's GitHub page) in the browser. */
+export const openUrl = (url: string) => invoke("open_url", { url });
+
 /** Turn an absolute file path into an asset: URL the webview can load. */
 export const assetUrl = (path: string) => convertFileSrc(path);
 

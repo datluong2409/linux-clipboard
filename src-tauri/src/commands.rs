@@ -294,6 +294,12 @@ pub fn open_release_page(url: Option<String>) {
     updater::open_url(&target);
 }
 
+/// Open an arbitrary URL (e.g. the author's page) in the user's browser.
+#[tauri::command]
+pub fn open_url(url: String) {
+    updater::open_url(&url);
+}
+
 /// The shell command a GNOME custom keybinding runs to toggle the panel.
 /// (`tauri-plugin-single-instance` forwards `--toggle` to the running app.)
 fn gnome_toggle_command() -> Result<String, String> {
