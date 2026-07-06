@@ -28,7 +28,9 @@ export const deleteItem = (id: number) => invoke("delete_item", { id });
 export const clearHistory = (keepPinned: boolean) =>
   invoke("clear_history", { keepPinned });
 
-export const pasteItem = (id: number) => invoke<OpResult>("paste_item", { id });
+/** Paste a clip. `plain` (text clips) pastes without the captured formatting. */
+export const pasteItem = (id: number, plain?: boolean) =>
+  invoke<OpResult>("paste_item", { id, plain });
 
 export const hidePanel = () => invoke("hide_panel");
 

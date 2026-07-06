@@ -98,6 +98,17 @@ export function IconClipboard({ className }: IconProps) {
   );
 }
 
+// A serif "T" — "paste as plain text" (formatting stripped).
+export function IconPlainText({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M5 7V5h14v2" />
+      <path d="M12 5v14" />
+      <path d="M9 19h6" />
+    </svg>
+  );
+}
+
 // The GitHub mark is a solid glyph, so it fills (rather than strokes) currentColor.
 export function IconGithub({ className }: IconProps) {
   return (

@@ -1,12 +1,20 @@
 import { useI18n } from "../lib/i18n";
 import { assetUrl } from "../lib/ipc";
 import type { Clip } from "../types";
-import { IconImage, IconPin, IconPinFilled, IconTrash } from "./Icons";
+import {
+  IconImage,
+  IconPin,
+  IconPinFilled,
+  IconPlainText,
+  IconTrash,
+} from "./Icons";
 
 interface Props {
   clip: Clip;
   selected: boolean;
   onPaste: () => void;
+  /** Paste without the captured formatting (only shown for rich-text clips). */
+  onPastePlain: () => void;
   onTogglePin: () => void;
   onDelete: () => void;
 }
@@ -15,6 +23,7 @@ export function ClipboardItem({
   clip,
   selected,
   onPaste,
+  onPastePlain,
   onTogglePin,
   onDelete,
 }: Props) {
@@ -42,7 +51,20 @@ export function ClipboardItem({
         </p>
       )}
 
-      <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition group-hover:opacity-100">
+      <div className="absolute right-1.5 top-1.5 flex gap-1 rounded-lg bg-[var(--color-card)] p-0.5 opacity-0 shadow-sm ring-1 ring-black/5 transition group-hover:opacity-100 dark:bg-[var(--color-card-dark)] dark:ring-white/10">
+        {clip.kind === "text" && clip.html ? (
+          <button
+            type="button"
+            title={t("pastePlain")}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPastePlain();
+            }}
+            className="rounded p-1 text-neutral-500 hover:bg-black/10 hover:text-[var(--color-accent)] dark:hover:bg-white/10"
+          >
+            <IconPlainText className="h-4 w-4" />
+          </button>
+        ) : null}
         <button
           type="button"
           title={clip.pinned ? t("unpin") : t("pin")}

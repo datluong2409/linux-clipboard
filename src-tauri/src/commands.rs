@@ -60,8 +60,15 @@ pub fn clear_history(app: AppHandle, state: State<'_, AppState>, keep_pinned: bo
     let _ = app.emit("history-updated", ());
 }
 
+/// Paste a stored clip. `plain` (text clips only) drops any captured formatting
+/// and puts back the plain text, so the user can paste without styling.
 #[tauri::command]
-pub fn paste_item(app: AppHandle, state: State<'_, AppState>, id: i64) -> OpResult {
+pub fn paste_item(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: i64,
+    plain: Option<bool>,
+) -> OpResult {
     let st = state.inner();
     let clip = match st.db.lock() {
         Ok(conn) => {
@@ -84,7 +91,8 @@ pub fn paste_item(app: AppHandle, state: State<'_, AppState>, id: i64) -> OpResu
     match clip.kind.as_str() {
         "text" => {
             if let Some(text) = clip.content.clone() {
-                clipboard::write_text(st, text, clip.html.clone());
+                let html = if plain.unwrap_or(false) { None } else { clip.html.clone() };
+                clipboard::write_text(st, text, html);
             }
         }
         "image" => {

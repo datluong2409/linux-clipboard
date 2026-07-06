@@ -45,8 +45,8 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
   }, [refreshKey]);
 
   const doPaste = useCallback(
-    async (id: number) => {
-      const r = await pasteItem(id);
+    async (id: number, plain?: boolean) => {
+      const r = await pasteItem(id, plain);
       if (r?.reason === "copied") onToast(t("copiedPressCtrlV"));
     },
     [onToast, t],
@@ -84,7 +84,8 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
         const it = items[sel];
         if (it) {
           e.preventDefault();
-          void doPaste(it.id);
+          // Shift+Enter pastes without formatting (no-op for plain clips).
+          void doPaste(it.id, e.shiftKey);
         }
       }
     }
@@ -101,6 +102,7 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
       clip={clip}
       selected={index === sel}
       onPaste={() => void doPaste(clip.id)}
+      onPastePlain={() => void doPaste(clip.id, true)}
       onTogglePin={() => void onTogglePin(clip.id, !clip.pinned)}
       onDelete={() => void onDelete(clip.id)}
     />

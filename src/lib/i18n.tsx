@@ -21,6 +21,7 @@ const en = {
   unpin: "Unpin",
   delete: "Delete",
   formatted: "Formatted text",
+  pastePlain: "Paste as plain text",
 
   // Empty state
   emptyNoResults: "No results found",
@@ -98,6 +99,7 @@ const vi: Record<TKey, string> = {
   unpin: "Bỏ ghim",
   delete: "Xoá",
   formatted: "Văn bản có định dạng",
+  pastePlain: "Dán dạng text thuần",
 
   emptyNoResults: "Không tìm thấy kết quả",
   emptyNothing: "Chưa có gì trong lịch sử clipboard",
