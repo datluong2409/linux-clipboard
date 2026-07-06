@@ -34,14 +34,40 @@ export default function App() {
     };
   }, []);
 
-  // Hide on focus loss (Win+V behavior). Ignore the transient blur right after
-  // we grab focus on show, and never auto-hide while the Settings view is open.
+  // Auto-hide (Win+V behavior), made robust to Wayland's focus model.
+  //
+  // Primary path — hide on focus loss. Ignore the transient blur right after we
+  // grab focus on show, and never auto-hide while Settings is open.
+  //
+  // Fallback path — on Wayland the panel shown via the global hotkey usually
+  // never *receives* keyboard focus (compositor focus-stealing prevention), so
+  // no focus-loss event ever fires and the panel would stay open forever. Once
+  // the cursor has been over the panel, treat it leaving the window as "done"
+  // and hide. This is gated on the window being unfocused, so on X11 (and any
+  // Wayland setup that does grant focus) it stays inert and the focus path alone
+  // governs dismissal — no "vanishes when the mouse wanders off" surprise there.
   useEffect(() => {
     const win = getCurrentWindow();
+    const root = document.documentElement;
     let ignoreUntil = 0;
-    const p = win.onFocusChanged(({ payload: focused }) => {
+    let pointerInside = false;
+    let leaveTimer = 0;
+
+    const cancelLeave = () => {
+      if (leaveTimer) {
+        window.clearTimeout(leaveTimer);
+        leaveTimer = 0;
+      }
+    };
+    const markInside = () => {
+      pointerInside = true;
+      cancelLeave();
+    };
+
+    const focusSub = win.onFocusChanged(({ payload: focused }) => {
       if (focused) {
         ignoreUntil = Date.now() + 300;
+        cancelLeave(); // real focus now governs dismissal
         return;
       }
       if (Date.now() < ignoreUntil) return;
@@ -49,8 +75,37 @@ export default function App() {
         void win.hide();
       }
     });
+
+    const onPointerLeave = () => {
+      // Only the unfocused-panel case; when focused, the focus path handles it.
+      if (!pointerInside || viewRef.current === "settings" || document.hasFocus()) {
+        return;
+      }
+      cancelLeave();
+      leaveTimer = window.setTimeout(() => {
+        if (viewRef.current !== "settings" && !document.hasFocus()) {
+          void win.hide();
+        }
+      }, 300);
+    };
+
+    // Reset the "cursor has visited" flag on every fresh show.
+    const shownSub = onEvent("panel-shown", () => {
+      pointerInside = false;
+      cancelLeave();
+    });
+
+    root.addEventListener("mousemove", markInside);
+    root.addEventListener("mouseenter", markInside);
+    root.addEventListener("mouseleave", onPointerLeave);
+
     return () => {
-      void p.then((u) => u());
+      cancelLeave();
+      root.removeEventListener("mousemove", markInside);
+      root.removeEventListener("mouseenter", markInside);
+      root.removeEventListener("mouseleave", onPointerLeave);
+      void focusSub.then((u) => u());
+      void shownSub.then((u) => u());
     };
   }, []);
 
