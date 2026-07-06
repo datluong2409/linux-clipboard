@@ -77,6 +77,15 @@ export function ClipboardItem({
           {clip.width}×{clip.height}
         </span>
       ) : null}
+
+      {clip.kind === "text" && clip.html ? (
+        <span
+          title={t("formatted")}
+          className="absolute bottom-1.5 left-1.5 rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
+        >
+          <span className="italic underline">A</span>
+        </span>
+      ) : null}
     </div>
   );
 }

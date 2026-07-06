@@ -11,12 +11,14 @@ use rusqlite::{params, Connection, Row};
 use std::path::Path;
 
 const COLS: &str =
-    "id, kind, content, image_path, thumb_path, width, height, byte_size, pinned, created_at, last_used_at";
+    "id, kind, content, html, image_path, thumb_path, width, height, byte_size, pinned, created_at, last_used_at";
 
 /// A row about to be inserted.
 pub struct NewClip<'a> {
     pub kind: &'a str,
     pub content: Option<&'a str>,
+    /// Rich-text `text/html` for text clips (see `Clip::html`); `None` otherwise.
+    pub html: Option<&'a str>,
     pub image_path: Option<&'a str>,
     pub thumb_path: Option<&'a str>,
     pub width: Option<i64>,
@@ -44,6 +46,7 @@ fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             kind         TEXT    NOT NULL CHECK (kind IN ('text','image')),
             content      TEXT,
+            html         TEXT,
             image_path   TEXT,
             thumb_path   TEXT,
             width        INTEGER,
@@ -58,7 +61,19 @@ fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
         CREATE INDEX IF NOT EXISTS idx_clips_pinned ON clips(pinned, last_used_at DESC);
         CREATE INDEX IF NOT EXISTS idx_clips_hash   ON clips(hash);
         CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);",
-    )
+    )?;
+
+    // Migration: `html` was added after the initial release. `CREATE TABLE IF
+    // NOT EXISTS` above won't alter a pre-existing table, so add the column here.
+    // Guarded by a column check so we don't run a failing ALTER on every startup.
+    let has_html = conn
+        .prepare("SELECT 1 FROM pragma_table_info('clips') WHERE name = 'html'")
+        .and_then(|mut s| s.exists([]))
+        .unwrap_or(false);
+    if !has_html {
+        conn.execute("ALTER TABLE clips ADD COLUMN html TEXT", [])?;
+    }
+    Ok(())
 }
 
 fn row_to_clip(row: &Row) -> rusqlite::Result<Clip> {
@@ -66,6 +81,7 @@ fn row_to_clip(row: &Row) -> rusqlite::Result<Clip> {
         id: row.get("id")?,
         kind: row.get("kind")?,
         content: row.get("content")?,
+        html: row.get("html")?,
         image_path: row.get("image_path")?,
         thumb_path: row.get("thumb_path")?,
         width: row.get("width")?,
@@ -91,10 +107,10 @@ pub fn insert(conn: &Connection, c: &NewClip) -> rusqlite::Result<i64> {
     let now = now_ms();
     conn.execute(
         "INSERT INTO clips
-            (kind, content, image_path, thumb_path, width, height, byte_size, hash, pinned, created_at, last_used_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,0,?9,?9)",
+            (kind, content, html, image_path, thumb_path, width, height, byte_size, hash, pinned, created_at, last_used_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,0,?10,?10)",
         params![
-            c.kind, c.content, c.image_path, c.thumb_path, c.width, c.height, c.byte_size, c.hash, now
+            c.kind, c.content, c.html, c.image_path, c.thumb_path, c.width, c.height, c.byte_size, c.hash, now
         ],
     )?;
     Ok(conn.last_insert_rowid())
@@ -116,6 +132,21 @@ pub fn bump_used(conn: &Connection, id: i64) {
         "UPDATE clips SET last_used_at = ?2 WHERE id = ?1",
         params![id, now_ms()],
     );
+}
+
+/// Bump on re-copy, refreshing stored HTML when the re-copied content carries
+/// formatting. Upgrade-only: a later plain-text re-copy (`html == None`) keeps
+/// formatting captured earlier rather than clearing it.
+pub fn bump_used_with_html(conn: &Connection, id: i64, html: Option<&str>) {
+    match html {
+        Some(h) => {
+            let _ = conn.execute(
+                "UPDATE clips SET last_used_at = ?2, html = ?3 WHERE id = ?1",
+                params![id, now_ms(), h],
+            );
+        }
+        None => bump_used(conn, id),
+    }
 }
 
 pub fn set_pinned(conn: &Connection, id: i64, pinned: bool) -> rusqlite::Result<()> {

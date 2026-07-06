@@ -11,6 +11,10 @@ pub struct Clip {
     pub id: i64,
     pub kind: String, // "text" | "image"
     pub content: Option<String>,
+    /// For rich-text clips: the captured `text/html`, replayed on paste so
+    /// formatting (bold/italic/underline, links, colors) survives. `None` for
+    /// plain text and images.
+    pub html: Option<String>,
     pub image_path: Option<String>,
     pub thumb_path: Option<String>,
     pub width: Option<i64>,

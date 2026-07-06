@@ -4,6 +4,8 @@ export interface Clip {
   id: number;
   kind: "text" | "image";
   content: string | null;
+  /** Rich-text `text/html` (bold/italic/underline…), replayed on paste. `null` for plain text/images. */
+  html: string | null;
   imagePath: string | null;
   thumbPath: string | null;
   width: number | null;

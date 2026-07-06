@@ -84,7 +84,7 @@ pub fn paste_item(app: AppHandle, state: State<'_, AppState>, id: i64) -> OpResu
     match clip.kind.as_str() {
         "text" => {
             if let Some(text) = clip.content.clone() {
-                clipboard::write_text(st, text);
+                clipboard::write_text(st, text, clip.html.clone());
             }
         }
         "image" => {

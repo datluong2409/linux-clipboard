@@ -20,7 +20,11 @@ use tauri::{AppHandle, Emitter, Manager};
 const POLL_MS: u64 = 400;
 
 pub enum Payload {
-    Text(String),
+    Text {
+        text: String,
+        /// Captured `text/html` when the source offered rich formatting.
+        html: Option<String>,
+    },
     Image {
         width: usize,
         height: usize,
@@ -41,7 +45,10 @@ pub enum Payload {
 fn read_with(cb: &mut Clipboard) -> Payload {
     if let Ok(text) = cb.get_text() {
         if !text.trim().is_empty() {
-            return Payload::Text(text);
+            // Rich-text sources also expose a `text/html` target — capture it so
+            // paste-back can restore formatting. Blank/absent html -> plain text.
+            let html = cb.get().html().ok().filter(|h| !h.trim().is_empty());
+            return Payload::Text { text, html };
         }
     }
     if let Ok(img) = cb.get_image() {
@@ -77,7 +84,7 @@ pub fn start_monitor(app: AppHandle) {
 
             let payload = read_with(cb);
             let hash = match &payload {
-                Payload::Text(t) => hash_text(t),
+                Payload::Text { text, .. } => hash_text(text),
                 Payload::Image { hash, .. } => hash.clone(),
                 Payload::None => continue,
             };
@@ -108,16 +115,22 @@ fn record(st: &AppState, settings: &Settings, payload: Payload, hash: &str) -> b
     };
 
     // Dedup: identical content already in history -> move it to the top.
+    // Dedup keys on the plain text, so re-copying the same text with new
+    // formatting refreshes the stored HTML rather than inserting a duplicate.
     if let Some(id) = db::find_by_hash(&conn, hash) {
-        db::bump_used(&conn, id);
+        match &payload {
+            Payload::Text { html, .. } => db::bump_used_with_html(&conn, id, html.as_deref()),
+            _ => db::bump_used(&conn, id),
+        }
         return true;
     }
 
     let gc = match payload {
-        Payload::Text(text) => {
+        Payload::Text { text, html } => {
             let new = db::NewClip {
                 kind: "text",
                 content: Some(&text),
+                html: html.as_deref(),
                 image_path: None,
                 thumb_path: None,
                 width: None,
@@ -150,6 +163,7 @@ fn record(st: &AppState, settings: &Settings, payload: Payload, hash: &str) -> b
             let new = db::NewClip {
                 kind: "image",
                 content: None,
+                html: None,
                 image_path: Some(&saved.image_path),
                 thumb_path: Some(&saved.thumb_path),
                 width: Some(saved.width),
@@ -170,15 +184,21 @@ fn record(st: &AppState, settings: &Settings, payload: Payload, hash: &str) -> b
     true
 }
 
-/// Set clipboard text (armed against self-recording). Keeps the X11 selection
-/// alive on a background thread until another app takes ownership.
-pub fn write_text(st: &AppState, text: String) {
+/// Set clipboard text (armed against self-recording). When `html` is present the
+/// content is written as `text/html` with `text` as the plain-text alternative,
+/// so pasting into a rich editor restores formatting while plain fields still get
+/// the text. Suppression keys on the plain text (the html's alt matches it).
+/// Keeps the X11 selection alive on a background thread until another app takes ownership.
+pub fn write_text(st: &AppState, text: String, html: Option<String>) {
     st.arm_suppress();
     st.set_last_seen(Some(hash_text(&text)));
     std::thread::spawn(move || {
         if let Ok(mut cb) = Clipboard::new() {
             use arboard::SetExtLinux;
-            let _ = cb.set().wait().text(text);
+            let _ = match html {
+                Some(h) => cb.set().wait().html(h.as_str(), Some(text.as_str())),
+                None => cb.set().wait().text(text),
+            };
         }
     });
 }
