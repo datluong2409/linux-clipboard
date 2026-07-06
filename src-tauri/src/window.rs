@@ -44,9 +44,8 @@ fn position(app: &AppHandle, win: &WebviewWindow) {
     let state = app.state::<AppState>();
     let settings = state.settings();
 
-    // Wayland panels read a touch narrower than the X11 default width.
-    let width = if state.session.kind == "wayland" { 420.0 } else { 460.0 };
-    let _ = win.set_size(LogicalSize::new(width, 520.0));
+    // Panel size, same for every session.
+    let _ = win.set_size(LogicalSize::new(380.0, 520.0));
 
     // Wayland (or forced center): let the compositor place it.
     if settings.position_mode != "cursor" || state.session.kind != "x11" {
