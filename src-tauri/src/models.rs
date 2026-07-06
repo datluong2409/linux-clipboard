@@ -36,7 +36,9 @@ pub struct Settings {
     pub max_image_bytes: u64,
     /// "cursor" (X11) | "center" (Wayland / forced).
     pub position_mode: String,
-    /// "system" | "light" | "dark".
+    /// "system" | "light" | "dark". `#[serde(default)]` keeps older settings.json
+    /// files (written before this field existed) loadable, defaulting to light.
+    #[serde(default = "default_theme")]
     pub theme: String,
     pub gnome_shortcut_configured: bool,
     pub first_run_done: bool,
@@ -50,6 +52,10 @@ fn default_language() -> String {
     "en".into()
 }
 
+fn default_theme() -> String {
+    "light".into()
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -58,7 +64,7 @@ impl Default for Settings {
             history_cap: 25,
             max_image_bytes: 5 * 1024 * 1024,
             position_mode: "cursor".into(),
-            theme: "system".into(),
+            theme: default_theme(),
             gnome_shortcut_configured: false,
             first_run_done: false,
             language: default_language(),

@@ -67,6 +67,10 @@ const en = {
   // Settings — preferences
   language: "Language",
   maxItems: "Max items",
+  theme: "Theme",
+  themeSystem: "System",
+  themeLight: "Light",
+  themeDark: "Dark",
 
   // Settings — author (shown in the Updates section)
   author: "Author",
@@ -139,6 +143,10 @@ const vi: Record<TKey, string> = {
 
   language: "Ngôn ngữ",
   maxItems: "Số mục tối đa",
+  theme: "Giao diện",
+  themeSystem: "Hệ thống",
+  themeLight: "Sáng",
+  themeDark: "Tối",
 
   author: "Tác giả",
 

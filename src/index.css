@@ -2,10 +2,11 @@
 
 /*
   Make `dark:` utilities class-based instead of following `prefers-color-scheme`.
-  On Wayland, WebKitGTK maps the system/GTK theme onto `prefers-color-scheme`, so
-  the media-based default let the desktop theme recolor the whole panel. With this
-  the app stays on its own light theme; the `dark:` styles remain in the markup but
-  only activate under a `.dark` ancestor — reserved for a future manual theme toggle.
+  On Wayland, WebKitGTK maps the system/GTK theme onto `prefers-color-scheme`, so a
+  media-based default would let the desktop theme recolor the whole panel uninvited.
+  Instead the `.dark` ancestor is set explicitly from the Theme setting (App.tsx):
+  Light/Dark force it, while "System" opts back into `prefers-color-scheme` on the
+  user's say-so.
 */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -31,8 +32,8 @@ body,
   padding: 0;
 }
 
-/* Render native bits (form controls, default backgrounds, caret) in light mode
-   regardless of the desktop theme — pairs with the class-based dark variant. */
+/* Default native bits (form controls, backgrounds, caret) to light before the
+   Theme setting loads; App.tsx overrides `color-scheme` inline for dark mode. */
 html {
   color-scheme: light;
 }

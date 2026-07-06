@@ -23,6 +23,13 @@ import type { PasteState, SessionInfo, Settings, UpdateCheck } from "../types";
 const AUTHOR = "datluong2409";
 const AUTHOR_URL = `https://github.com/${AUTHOR}`;
 
+/** Theme choices for the segmented picker (value ↔ Settings.theme, label key ↔ i18n). */
+const THEMES = [
+  { value: "system", key: "themeSystem" },
+  { value: "light", key: "themeLight" },
+  { value: "dark", key: "themeDark" },
+] as const;
+
 interface Props {
   settings: Settings | null;
   sessionInfo: SessionInfo | null;
@@ -322,6 +329,32 @@ export function SettingsView({
               className="w-20 rounded-md border border-black/10 bg-white/60 px-2 py-1 text-right text-sm outline-none dark:border-white/10 dark:bg-white/10"
             />
           </label>
+        </section>
+
+        {/* Theme */}
+        <section className="mb-4">
+          <div className="flex items-center justify-between gap-3 py-1">
+            <span className="text-sm text-neutral-800 dark:text-neutral-100">
+              {t("theme")}
+            </span>
+            <div className="flex rounded-md border border-black/10 p-0.5 dark:border-white/10">
+              {THEMES.map((th) => (
+                <button
+                  key={th.value}
+                  type="button"
+                  onClick={() => onSave({ ...settings, theme: th.value })}
+                  className={[
+                    "rounded px-2.5 py-1 text-xs font-medium transition",
+                    settings.theme === th.value
+                      ? "bg-[var(--color-accent)] text-white"
+                      : "text-neutral-600 hover:bg-black/5 dark:text-neutral-300 dark:hover:bg-white/10",
+                  ].join(" ")}
+                >
+                  {t(th.key)}
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* Language */}

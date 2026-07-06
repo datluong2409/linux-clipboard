@@ -34,6 +34,27 @@ export default function App() {
     };
   }, []);
 
+  // Apply the color theme to <html> so Tailwind's class-based `dark:` variant
+  // (see index.css) and native controls (via color-scheme) both follow the
+  // user's choice. "system" tracks the desktop's prefers-color-scheme live.
+  useEffect(() => {
+    const theme = settings?.theme;
+    if (!theme) return;
+    const root = document.documentElement;
+    const apply = (dark: boolean) => {
+      root.classList.toggle("dark", dark);
+      root.style.colorScheme = dark ? "dark" : "light";
+    };
+    if (theme === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      apply(mq.matches);
+      const onChange = (e: MediaQueryListEvent) => apply(e.matches);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    }
+    apply(theme === "dark");
+  }, [settings?.theme]);
+
   // Auto-hide (Win+V behavior), made robust to Wayland's focus model.
   //
   // Primary path — hide on focus loss. Ignore the transient blur right after we
