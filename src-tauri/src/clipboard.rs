@@ -30,8 +30,20 @@ pub enum Payload {
     None,
 }
 
-/// Read the current clipboard, preferring images (the richer type) over text.
+/// Read the current clipboard, preferring text over image.
+///
+/// Rich-text copies (bold/italic/underline from office apps, editors, the web)
+/// advertise BOTH a `text/plain` target and a rendered `image/png`/bitmap of the
+/// selection. We want the text in that case, so we only fall back to the image
+/// when there is no usable text — i.e. a true image (screenshot, copied picture).
+/// Reading image-first would grab the rendered bitmap and lose the formatted text
+/// (stored as a picture, or dropped entirely if it exceeds `max_image_bytes`).
 fn read_with(cb: &mut Clipboard) -> Payload {
+    if let Ok(text) = cb.get_text() {
+        if !text.trim().is_empty() {
+            return Payload::Text(text);
+        }
+    }
     if let Ok(img) = cb.get_image() {
         let (width, height) = (img.width, img.height);
         let hash = hash_bytes(&img.bytes);
@@ -41,11 +53,6 @@ fn read_with(cb: &mut Clipboard) -> Payload {
             rgba: img.bytes.into_owned(),
             hash,
         };
-    }
-    if let Ok(text) = cb.get_text() {
-        if !text.is_empty() {
-            return Payload::Text(text);
-        }
     }
     Payload::None
 }
