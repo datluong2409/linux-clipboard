@@ -67,8 +67,27 @@ fn position(app: &AppHandle, win: &WebviewWindow) {
     let mut x = cx + 8;
     let mut y = cy + 8;
 
-    // Clamp within the monitor under the cursor so the panel never spills off.
-    if let Ok(Some(monitor)) = win.current_monitor() {
+    // Clamp within the monitor *under the cursor* so the panel never spills off
+    // — and, on a multi-monitor layout, so it actually lands on the screen the
+    // cursor is on. `current_monitor()` returns the monitor the *window* sits on
+    // (usually the primary), which would wrongly clamp a cursor on a second
+    // monitor back onto the first; find the monitor that contains the cursor.
+    let monitor = win
+        .available_monitors()
+        .ok()
+        .and_then(|mons| {
+            mons.into_iter().find(|m| {
+                let p = m.position();
+                let s = m.size();
+                cx >= p.x
+                    && cx < p.x + s.width as i32
+                    && cy >= p.y
+                    && cy < p.y + s.height as i32
+            })
+        })
+        .or_else(|| win.current_monitor().ok().flatten());
+
+    if let Some(monitor) = monitor {
         let mp = monitor.position();
         let ms = monitor.size();
         let (min_x, min_y) = (mp.x, mp.y);
