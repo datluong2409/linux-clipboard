@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Lock native rendering to light so the system/GTK theme can't recolor the
+         webview on Wayland (WebKitGTK maps GTK's dark theme to prefers-color-scheme). -->
+    <meta name="color-scheme" content="light" />
     <title>Clipboard</title>
   </head>
 

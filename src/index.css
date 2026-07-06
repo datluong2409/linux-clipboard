@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
 /*
+  Make `dark:` utilities class-based instead of following `prefers-color-scheme`.
+  On Wayland, WebKitGTK maps the system/GTK theme onto `prefers-color-scheme`, so
+  the media-based default let the desktop theme recolor the whole panel. With this
+  the app stays on its own light theme; the `dark:` styles remain in the markup but
+  only activate under a `.dark` ancestor — reserved for a future manual theme toggle.
+*/
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
   Windows-10-style clipboard theme.
   The panel window is frameless + transparent; the app paints its own rounded
   surface so it looks correct whether or not the compositor honors transparency.
@@ -20,6 +29,12 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+/* Render native bits (form controls, default backgrounds, caret) in light mode
+   regardless of the desktop theme — pairs with the class-based dark variant. */
+html {
+  color-scheme: light;
 }
 
 body {
