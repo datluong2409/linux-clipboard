@@ -121,18 +121,36 @@ fi
 # A live instance holds history in memory and re-saves settings/DB on exit, so
 # it would undo the wipe below; stop it first. Runs as the invoking user, so it
 # only touches this user's instance (the .deb's root-run prerm covers all users).
-if command -v pkill >/dev/null 2>&1 && pgrep -x "$BIN_NAME" >/dev/null 2>&1; then
+#
+# Match instances by exe basename, NOT `pkill -x linux-clipboard`: installed as
+# /usr/bin/linux-clipboard-uninstall, this script's own process name (comm) is
+# capped at 15 chars to exactly "linux-clipboard" (comm is the script filename,
+# not the interpreter), so a name match would signal-kill the uninstaller
+# itself. Skipping our own PID and checking /proc/<pid>/exe avoids that and
+# still finds both .deb (/usr/bin) and AppImage-launched instances.
+app_pids() {
+  command -v pgrep >/dev/null 2>&1 || return 0
+  for pid in $(pgrep -x "$BIN_NAME" 2>/dev/null || true); do
+    [ "$pid" = "$$" ] && continue
+    exe="$(readlink -f "/proc/$pid/exe" 2>/dev/null)" || continue
+    if [ "${exe##*/}" = "$BIN_NAME" ]; then
+      printf '%s\n' "$pid"
+    fi
+  done
+}
+
+if [ -n "$(app_pids)" ]; then
   note "Stopping running Linux Clipboard…"
   if [ "$DRY_RUN" -eq 1 ]; then
-    note "  [dry-run] pkill -x $BIN_NAME"
+    note "  [dry-run] terminate pids: $(app_pids | tr '\n' ' ')"
   else
-    pkill -TERM -x "$BIN_NAME" 2>/dev/null || true
+    for pid in $(app_pids); do kill -TERM "$pid" 2>/dev/null || true; done
     i=0
-    while [ "$i" -lt 10 ] && pgrep -x "$BIN_NAME" >/dev/null 2>&1; do
+    while [ "$i" -lt 10 ] && [ -n "$(app_pids)" ]; do
       sleep 0.2
       i=$((i + 1))
     done
-    pkill -KILL -x "$BIN_NAME" 2>/dev/null || true
+    for pid in $(app_pids); do kill -KILL "$pid" 2>/dev/null || true; done
     note "  stopped"
   fi
 fi
