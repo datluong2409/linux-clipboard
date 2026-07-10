@@ -38,6 +38,19 @@ fn show(app: &AppHandle, win: &WebviewWindow) {
     let _ = win.set_focus();
     // Front-end loads history + focuses search on this event.
     let _ = app.emit("panel-shown", ());
+
+    // X11/GNOME (Mutter's focus-stealing prevention) frequently drops the focus
+    // request issued the instant the window maps, leaving the panel visible but
+    // without keyboard focus. Re-assert focus once the window has had time to
+    // map so search/arrow-keys work immediately on show. Guarded on still-being
+    // -visible so a quick toggle-off within the delay doesn't resurrect it.
+    let win = win.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(80));
+        if win.is_visible().unwrap_or(false) {
+            let _ = win.set_focus();
+        }
+    });
 }
 
 fn position(app: &AppHandle, win: &WebviewWindow) {

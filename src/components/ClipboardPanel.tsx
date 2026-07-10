@@ -38,8 +38,12 @@ export function ClipboardPanel({ refreshKey, onToast, onOpenSettings }: Props) {
     el?.scrollIntoView({ block: "nearest" });
   }, [sel]);
 
-  // Focus search each time the panel is (re)shown.
+  // Reset selection + scroll to top and focus search each time the panel is
+  // (re)shown. The window stays mounted while hidden, so the list would
+  // otherwise keep its previous scroll position (and selection) on next show.
   useEffect(() => {
+    setSel(0);
+    if (listRef.current) listRef.current.scrollTop = 0;
     const t = setTimeout(() => searchRef.current?.focus(), 30);
     return () => clearTimeout(t);
   }, [refreshKey]);
